@@ -1,5 +1,21 @@
 # Changelog
 
+<a name="0.3.0"></a>
+## 0.3.0 (2026-09-03)
+
+### Added
+
+- ✨ Filter the home menu by typing, like every other list (ADR-0013) [[4c9b04f](https://github.com/mathieutu/ovhtool/commit/4c9b04ff59545e1cb1659432eefe6e25e468acf8)]
+
+### Changed
+
+- 🎨 Distinguish home menu colors from services, rename labels [[7a38c45](https://github.com/mathieutu/ovhtool/commit/7a38c45061de7ae4a67418299e7be65eecb3439b)]
+
+### Fixed
+
+- 🐛 Force the process to exit once Ink unmounts, and disable HTTP keep-alive [[b2ceab4](https://github.com/mathieutu/ovhtool/commit/b2ceab405be6602cbca81e4e2a428c0480602107)]
+
+
 <a name="0.2.0"></a>
 ## 0.2.0 (2026-09-03)
 
@@ -30,7 +46,7 @@
 ### Miscellaneous
 
 - 📝 Add contributing guide [[f811dce](https://github.com/mathieutu/ovhtool/commit/f811dcef85094fd1d94e6d29b4c89369b8d6d5c6)]
--  👷 Add CI workflow [[ecd3ab4](https://github.com/mathieutu/ovhtool/commit/ecd3ab426385b0d9b91c677aa50d9e97bcafaf06)]
+- 👷 Add CI workflow [[ecd3ab4](https://github.com/mathieutu/ovhtool/commit/ecd3ab426385b0d9b91c677aa50d9e97bcafaf06)]
 - 📦 Prepare package.json for open-source publishing [[38a11a4](https://github.com/mathieutu/ovhtool/commit/38a11a46f4d137e3358fa06d2ce2ee22f221791d)]
 - 📄 Add AGPL-3.0 license [[32a584a](https://github.com/mathieutu/ovhtool/commit/32a584ab3a92bfcbacb39d1f18dfcf655d50a783)]
 - 📝 Document architecture decisions as ADRs [[479e3dd](https://github.com/mathieutu/ovhtool/commit/479e3dd1be05eb0975846634a5843b2304c30f2e)]
