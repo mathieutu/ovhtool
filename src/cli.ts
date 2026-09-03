@@ -79,6 +79,14 @@ async function runInkApp(props: AppProps): Promise<void> {
   } finally {
     if (supportsAltScreen) process.stdout.write('\x1b[?1007l\x1b[?1049l')
   }
+  // Ink resolves `waitUntilExit` on unmount — Ctrl+C included — by disabling
+  // raw mode and unref'ing stdin, but never calls `process.exit` itself. Any
+  // in-flight OVH request (or a `pollUntil` retry loop) left running at that
+  // point keeps the event loop alive, so the shell doesn't get its prompt
+  // back until a second, "real" Ctrl+C kills the process outright. Once the
+  // session's single Ink instance is gone there's nothing left worth
+  // finishing, so force the exit here instead of waiting on it.
+  process.exit(process.exitCode ?? 0)
 }
 
 /** Runs `agentFn` off a TTY / under --json, or mounts the Ink app otherwise. */
