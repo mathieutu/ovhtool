@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -170,4 +170,40 @@ test('visibleRows: a caller building `selected = result[index]` must get the exa
   // Picking the 2nd row on screen (index 1) must resolve to ecole-francaise's ffs entry, not perso's.
   assert.equal(result[1]?.account, 'ffs')
   assert.equal(result[1]?.domain, 'ecole-francaise-de-speleologie.com')
+})
+
+test('stripDomainSuffix leaves a bare local part untouched', () => {
+  assert.equal(stripDomainSuffix('www', 'example.com'), 'www')
+})
+
+test('stripDomainSuffix strips a trailing ".domain" the user accidentally typed', () => {
+  assert.equal(stripDomainSuffix('www.example.com', 'example.com'), 'www')
+})
+
+test('stripDomainSuffix collapses the bare domain to the zone root', () => {
+  assert.equal(stripDomainSuffix('example.com', 'example.com'), '')
+})
+
+test('stripDomainSuffix does not strip an unrelated domain suffix', () => {
+  assert.equal(stripDomainSuffix('www.other.com', 'example.com'), 'www.other.com')
+})
+
+test('stripEmailDomain leaves a bare local part untouched', () => {
+  assert.equal(stripEmailDomain('contact', 'example.com'), 'contact')
+})
+
+test('stripEmailDomain strips a trailing "@domain" the user accidentally typed', () => {
+  assert.equal(stripEmailDomain('contact@example.com', 'example.com'), 'contact')
+})
+
+test('stripEmailDomain does not strip an unrelated email domain', () => {
+  assert.equal(stripEmailDomain('contact@other.com', 'example.com'), 'contact@other.com')
+})
+
+test('ensureEmailDomain appends "@domain" to a bare local part', () => {
+  assert.equal(ensureEmailDomain('contact', 'example.com'), 'contact@example.com')
+})
+
+test('ensureEmailDomain leaves a full address untouched', () => {
+  assert.equal(ensureEmailDomain('contact@other.com', 'example.com'), 'contact@other.com')
 })

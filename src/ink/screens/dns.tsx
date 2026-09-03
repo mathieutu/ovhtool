@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { fullDomain, toMarkdownTable } from '../../cliPure.ts'
+import { fullDomain, toMarkdownTable, stripDomainSuffix } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -228,7 +228,7 @@ function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: Mu
   const [applying, setApplying] = useState(false)
 
   const fields: FormField[] = [
-    { name: 'subDomain', label: 'Subdomain', kind: 'text', value: subDomain, onChange: setSubDomain },
+    { name: 'subDomain', label: `Subdomain (.${zone})`, kind: 'text', value: subDomain, onChange: setSubDomain },
     { name: 'target', label: 'Value', kind: 'text', value: target, onChange: setTarget },
     { name: 'fieldType', label: 'Type', kind: 'select', options: DNS_RECORD_TYPES.map((t) => ({ label: t, value: t })), value: fieldType, onChange: (v) => setFieldType(v as typeof fieldType) },
     { name: 'ttl', label: 'TTL', kind: 'text', value: ttl, onChange: setTtl },
@@ -240,14 +240,14 @@ function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: Mu
       return
     }
     onError(undefined)
-    setDiff(prepareAddDnsRecord({ zone, subDomain, target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined }))
+    setDiff(prepareAddDnsRecord({ zone, subDomain: stripDomainSuffix(subDomain, zone), target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined }))
   }
 
   async function confirm() {
     if (!client) return
     setApplying(true)
     try {
-      await applyAddDnsRecord(client, { zone, subDomain, target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined })
+      await applyAddDnsRecord(client, { zone, subDomain: stripDomainSuffix(subDomain, zone), target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined })
       onDone('✔ Record added')
     } catch (err) {
       setApplying(false)
@@ -283,21 +283,21 @@ function EditDnsPanel({ zone, record, client, onDone, onError, error }: Mutation
   const [applying, setApplying] = useState(false)
 
   const fields: FormField[] = [
-    { name: 'subDomain', label: 'Subdomain', kind: 'text', value: subDomain, onChange: setSubDomain },
+    { name: 'subDomain', label: `Subdomain (.${zone})`, kind: 'text', value: subDomain, onChange: setSubDomain },
     { name: 'target', label: 'Value', kind: 'text', value: target, onChange: setTarget },
     { name: 'ttl', label: 'TTL', kind: 'text', value: ttl, onChange: setTtl },
   ]
 
   function submit() {
     onError(undefined)
-    setDiff(prepareUpdateDnsRecord(record, { zone, id: record.id, subDomain, target, ttl: ttl ? parseInt(ttl, 10) : undefined }))
+    setDiff(prepareUpdateDnsRecord(record, { zone, id: record.id, subDomain: stripDomainSuffix(subDomain, zone), target, ttl: ttl ? parseInt(ttl, 10) : undefined }))
   }
 
   async function confirm() {
     if (!client) return
     setApplying(true)
     try {
-      await applyUpdateDnsRecord(client, { zone, id: record.id, subDomain, target, ttl: ttl ? parseInt(ttl, 10) : undefined })
+      await applyUpdateDnsRecord(client, { zone, id: record.id, subDomain: stripDomainSuffix(subDomain, zone), target, ttl: ttl ? parseInt(ttl, 10) : undefined })
       onDone('✔ Record updated')
     } catch (err) {
       setApplying(false)

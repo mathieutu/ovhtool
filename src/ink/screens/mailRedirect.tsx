@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { toMarkdownTable } from '../../cliPure.ts'
+import { toMarkdownTable, ensureEmailDomain } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -210,7 +210,7 @@ function AddRedirectionPanel({ domain, initialValues, client, onDone, onError, e
   const [applying, setApplying] = useState(false)
 
   const fields: FormField[] = [
-    { name: 'from', label: 'From', kind: 'text', value: from, onChange: setFrom },
+    { name: 'from', label: `From (@${domain})`, kind: 'text', value: from, onChange: setFrom },
     { name: 'to', label: 'To', kind: 'text', value: to, onChange: setTo },
   ]
 
@@ -220,14 +220,14 @@ function AddRedirectionPanel({ domain, initialValues, client, onDone, onError, e
       return
     }
     onError(undefined)
-    setDiff(prepareAddMailRedirection({ domain, from, to }))
+    setDiff(prepareAddMailRedirection({ domain, from: ensureEmailDomain(from, domain), to }))
   }
 
   async function confirm() {
     if (!client) return
     setApplying(true)
     try {
-      await applyAddMailRedirection(client, { domain, from, to })
+      await applyAddMailRedirection(client, { domain, from: ensureEmailDomain(from, domain), to })
       onDone('✔ Redirection added')
     } catch (err) {
       setApplying(false)

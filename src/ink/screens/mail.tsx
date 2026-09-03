@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { toMarkdownTable } from '../../cliPure.ts'
+import { toMarkdownTable, stripEmailDomain } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -222,7 +222,7 @@ function CreateMailPanel({ domain, initialValues, client, onDone, onError, error
   const [applying, setApplying] = useState(false)
 
   const fields: FormField[] = [
-    { name: 'accountName', label: 'Account name', kind: 'text', value: accountName, onChange: setAccountName },
+    { name: 'accountName', label: `Account name (@${domain})`, kind: 'text', value: accountName, onChange: setAccountName },
     { name: 'password', label: 'Password', kind: 'password', value: password, onChange: setPassword },
     { name: 'size', label: 'Size (MB)', kind: 'text', value: size, onChange: setSize },
     { name: 'description', label: 'Description', kind: 'text', value: description, onChange: setDescription },
@@ -238,14 +238,14 @@ function CreateMailPanel({ domain, initialValues, client, onDone, onError, error
       return
     }
     onError(undefined)
-    setDiff(prepareCreateMailAccount({ domain, accountName, password, size: size ? parseInt(size, 10) : undefined, description: description || undefined }))
+    setDiff(prepareCreateMailAccount({ domain, accountName: stripEmailDomain(accountName, domain), password, size: size ? parseInt(size, 10) : undefined, description: description || undefined }))
   }
 
   async function confirm() {
     if (!client) return
     setApplying(true)
     try {
-      await applyCreateMailAccount(client, { domain, accountName, password, size: size ? parseInt(size, 10) : undefined, description: description || undefined })
+      await applyCreateMailAccount(client, { domain, accountName: stripEmailDomain(accountName, domain), password, size: size ? parseInt(size, 10) : undefined, description: description || undefined })
       onDone('✔ Mail account created')
     } catch (err) {
       setApplying(false)

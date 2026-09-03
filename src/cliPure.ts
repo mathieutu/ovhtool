@@ -56,6 +56,41 @@ export function fullDomain(zone: string, subDomain: string): string {
 }
 
 /**
+ * Strips an accidentally-typed `domain` suffix from a local-part-only field
+ * (e.g. a DNS subdomain input) — so typing "www.example.com" while the zone
+ * is "example.com" still resolves to "www" instead of doubling up into
+ * "www.example.com.example.com". Typing the bare domain collapses to '' (the
+ * zone root).
+ */
+export function stripDomainSuffix(value: string, domain: string): string {
+  const trimmed = value.trim()
+  if (trimmed === domain) return ''
+  if (trimmed.endsWith(`.${domain}`)) return trimmed.slice(0, -(domain.length + 1))
+  return trimmed
+}
+
+/**
+ * Strips an accidentally-typed `@domain` suffix from a local-part-only email
+ * field (e.g. a mail account name input) — so typing "contact@example.com"
+ * while the domain is "example.com" still resolves to "contact".
+ */
+export function stripEmailDomain(value: string, domain: string): string {
+  const trimmed = value.trim()
+  const suffix = `@${domain}`
+  return trimmed.endsWith(suffix) ? trimmed.slice(0, -suffix.length) : trimmed
+}
+
+/**
+ * The inverse of `stripEmailDomain`, for a field that's normally a local
+ * part but may still receive a full address (e.g. a mail redirection's
+ * "from", pre-filled from the CLI) — appends `@domain` unless one is
+ * already present.
+ */
+export function ensureEmailDomain(value: string, domain: string): string {
+  return value.includes('@') ? value : `${value}@${domain}`
+}
+
+/**
  * Builds column widths that fit within `availableWidth`: every width in
  * `fixed` is used as-is, and any `null` entry shares the remaining width
  * evenly (used for the one free-text column of a `Table`, e.g. a DNS
