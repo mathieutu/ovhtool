@@ -3,6 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "description": "CLI to manage DNS zones, mail accounts and email redirections across several OVH accounts",
+  "keywords": [
+    "ovh",
+    "cli",
+    "dns",
+    "email"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "author": "Mathieu TUDISCO",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mathieutu/ovhtool.git"
+  },
+  "homepage": "https://github.com/mathieutu/ovhtool#readme",
+  "bugs": {
+    "url": "https://github.com/mathieutu/ovhtool/issues"
+  },
   "type": "module",
   "bin": "./dist/bin/ovhtool.js",
   "files": [
@@ -32,5 +48,6 @@
   },
   "engines": {
     "node": ">=23.6.0"
-  }
+  },
+  "packageManager": "yarn@4.18.0"
 }
