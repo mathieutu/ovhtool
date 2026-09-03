@@ -27,3 +27,4 @@ of being deleted.
 | [0010](0010-alternate-screen-pinned-layout.md) | Alternate screen buffer and pinned header/footer layout |
 | [0011](0011-markdown-export-not-tsv.md) | Markdown export instead of TSV |
 | [0012](0012-build-tooling-split.md) | Build tooling split: `tsc` for the published binary, `tsx` for the dev loop |
+| [0013](0013-filter-grammar-extends-to-every-list.md) | The permanent-filter grammar extends to every navigable list, not just `Table` |
