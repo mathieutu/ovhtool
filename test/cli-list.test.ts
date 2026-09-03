@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides, naturalColumnWidth } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -76,6 +76,15 @@ test('fitColumnWidths never lets flex columns go below a 20-char floor even on a
 
 test('fitColumnWidths with only fixed columns ignores availableWidth', () => {
   assert.deepEqual(fitColumnWidths([5, 10], 1000), [5, 10])
+})
+
+test('naturalColumnWidth is the longest of the header and every value', () => {
+  assert.equal(naturalColumnWidth('id', ['1', '204070', '42']), 6)
+  assert.equal(naturalColumnWidth('exercice_debut_date', ['2015-04-26']), 'exercice_debut_date'.length)
+})
+
+test('naturalColumnWidth handles an empty value list (falls back to the header length)', () => {
+  assert.equal(naturalColumnWidth('name', []), 4)
 })
 
 test('truncatePad pads short text with trailing spaces to the exact width', () => {

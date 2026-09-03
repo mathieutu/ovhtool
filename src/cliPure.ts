@@ -161,6 +161,16 @@ export function fitColumnWidths(fixed: (number | null)[], availableWidth: number
   return fixed.map((w) => w ?? flexWidth)
 }
 
+/**
+ * The width a column actually needs: the longest of its header and every
+ * rendered value — used to size a `Table`'s fixed columns to their real
+ * content instead of a hardcoded guess, which otherwise leaves a column
+ * (often the first, an id/short code) mostly empty padding for no reason.
+ */
+export function naturalColumnWidth(header: string, values: string[]): number {
+  return Math.max(header.length, ...values.map((v) => v.length))
+}
+
 /** Truncates `text` with an ellipsis and pads it to exactly `width` characters. */
 export function truncatePad(text: string, width: number): string {
   if (width <= 0) return ''

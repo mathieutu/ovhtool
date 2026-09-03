@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
-import { fitColumnWidths, truncatePad, computeScrollWindow, hyperlink, visibleRows } from '../../cliPure.ts'
+import { fitColumnWidths, truncatePad, computeScrollWindow, hyperlink, visibleRows, naturalColumnWidth } from '../../cliPure.ts'
 import { TextInput } from './primitives/TextInput.tsx'
 import { useTheme } from '../theme.ts'
 
 export type TableColumn<T> = {
   header: string
   render: (item: T) => string
-  /** Fixed character width, or `null` to share the remaining terminal width (long free-text columns truncate instead of overflowing). At most one column should be `null`. */
+  /** Maximum character width, or `null` to share the remaining terminal width (long free-text columns truncate instead of overflowing). At most one column should be `null`. A capped column still shrinks below this when its actual content is narrower, instead of padding out to it. */
   width: number | null
   /** Optional: makes the cell a clickable terminal hyperlink pointing at this URL. */
   href?: (item: T) => string
@@ -43,19 +43,48 @@ export type TableProps<T> = {
 /**
  * Extra terminal rows already spent outside the data rows: the parent
  * screen's `Header` (3: top border, content, bottom border), this
- * component's own filter + blank margin + column-header lines (3), the
- * parent's `Footer` (2: its worst case, a status/revalidating line above the
- * binding hints — budgeting for the common 1-line case instead would make
- * the whole fixed-height frame overflow by a row the moment that second line
- * appears, which is exactly what a background revalidation's spinner did:
- * a visible "jump" instead of a readable indicator), and the scroll-position
- * indicator line (`12-27 / 340`) that appears once the list needs to scroll.
- * Tuned to exactly this budget rather than padded "to be safe": an
- * over-generous reserve quietly wastes a row of screen space on every single
- * table, permanently.
+ * component's own filter + blank margin + column-header + header-separator
+ * lines (4), the parent's `Footer` (2: its worst case, a status/revalidating
+ * line above the binding hints — budgeting for the common 1-line case
+ * instead would make the whole fixed-height frame overflow by a row the
+ * moment that second line appears, which is exactly what a background
+ * revalidation's spinner did: a visible "jump" instead of a readable
+ * indicator), and the scroll-position indicator line (`12-27 / 340`) that
+ * appears once the list needs to scroll. Tuned to exactly this budget rather
+ * than padded "to be safe": an over-generous reserve quietly wastes a row of
+ * screen space on every single table, permanently.
  */
-const RESERVED_ROWS = 3 + 3 + 2 + 1
+const RESERVED_ROWS = 3 + 4 + 2 + 1
 const MIN_VISIBLE_ROWS = 3
+
+/**
+ * Column separator character between cells, and its `━`/`╋` equivalent for
+ * the rule below the header — a plain double-space gap reads as loose,
+ * unstructured text; a rule under the header makes it read as a table.
+ * Deliberately the *heavy* box-drawing set (`┃`/`━`/`╋`, U+2503/2501/254B)
+ * rather than the regular-weight one (`│`/`─`/┼`) or plain ASCII (`|`/`-`):
+ * a thin glyph covers far fewer pixels than a letter, so at the same ANSI
+ * color it reads as visibly lighter/grayer in most terminal fonts — a
+ * font-rendering effect, not a color one, so it can't be fixed by picking a
+ * different *color*. The heavy variant's thicker stroke covers close to as
+ * much ink as a letter, which is what actually fixes the mismatch. Rendered
+ * `dimColor` (like the rule) via `joinWithSeparator` below, everywhere except
+ * the currently selected row — there the separator sits inside the same
+ * `inverse` highlight bar as the rest of the line, and dimming just that one
+ * character would poke a mismatched hole in it.
+ */
+const SEPARATOR = '┃'
+const COLUMN_GAP = ` ${SEPARATOR} `
+
+/** Renders `cells` with `COLUMN_GAP`'s separator between them, dimmed unless `dimSeparator` is false (see `SEPARATOR`'s doc comment). */
+function joinWithSeparator(cells: string[], dimSeparator: boolean): React.ReactNode {
+  return cells.map((cell, i) => (
+    <React.Fragment key={i}>
+      {i > 0 && <Text dimColor={dimSeparator}>{COLUMN_GAP}</Text>}
+      {cell}
+    </React.Fragment>
+  ))
+}
 
 export function useTerminalSize(): { rows: number; columns: number } {
   const { stdout } = useStdout()
@@ -100,22 +129,21 @@ export function Table<T>({ columns, rows, searchFields, filter, onFilterChange, 
     { isActive },
   )
 
-  const widths = fitColumnWidths(
-    columns.map((c) => c.width),
-    terminalColumns,
+  const cappedWidths = columns.map((c) =>
+    c.width === null ? null : Math.min(c.width, naturalColumnWidth(c.header, filtered.map((item) => c.render(item)))),
   )
+  const widths = fitColumnWidths(cappedWidths, terminalColumns, COLUMN_GAP.length)
   const visibleRowCount = Math.max(maxVisibleRows ?? terminalRows - RESERVED_ROWS, MIN_VISIBLE_ROWS)
   const { start, end } = computeScrollWindow(Math.max(clampedIndex, 0), filtered.length, visibleRowCount)
   const visible = filtered.slice(start, end)
 
-  const headerLine = columns.map((c, i) => truncatePad(c.header, widths[i]!)).join('  ')
-  const dataLine = (item: T) =>
-    columns
-      .map((c, i) => {
-        const padded = truncatePad(c.render(item), widths[i]!)
-        return c.href ? hyperlink(c.href(item), padded) : padded
-      })
-      .join('  ')
+  const headerCells = columns.map((c, i) => truncatePad(c.header, widths[i]!))
+  const headerRule = widths.map((w) => '━'.repeat(w)).join('━╋━')
+  const dataCells = (item: T) =>
+    columns.map((c, i) => {
+      const padded = truncatePad(c.render(item), widths[i]!)
+      return c.href ? hyperlink(c.href(item), padded) : padded
+    })
 
   return (
     <Box flexDirection="column">
@@ -123,17 +151,19 @@ export function Table<T>({ columns, rows, searchFields, filter, onFilterChange, 
         <Text dimColor>Filter: </Text>
         <TextInput value={filter} onChange={onFilterChange} isDisabled={!isActive} placeholder="(type to filter)" />
       </Box>
-      <Box marginTop={1}>
-        <Text bold>{headerLine}</Text>
+      <Box marginTop={1} flexDirection="column">
+        <Text bold>{joinWithSeparator(headerCells, true)}</Text>
+        <Text dimColor>{headerRule}</Text>
       </Box>
       {filtered.length === 0 ? (
         <Text dimColor>{emptyLabel}</Text>
       ) : (
         visible.map((item, i) => {
           const index = start + i
+          const selected = index === clampedIndex
           return (
-            <Text key={index} color={index === clampedIndex ? color : undefined} inverse={index === clampedIndex}>
-              {dataLine(item)}
+            <Text key={index} color={selected ? color : undefined} inverse={selected}>
+              {joinWithSeparator(dataCells(item), !selected)}
             </Text>
           )
         })
