@@ -108,7 +108,7 @@ test('computeScrollWindow clamps the window at the start and end of the list', (
 })
 
 test('sortRowsByColumn sorts alphabetically by the given column value', () => {
-  const sorted = sortRowsByColumn(rows, (r) => r.email)
+  const sorted = sortRowsByColumn(rows, [(r) => r.email])
   assert.deepEqual(
     sorted.map((r) => r.email),
     ['admin@bar.fr', 'billing@client-x.fr', 'contact@bar.fr'],
@@ -117,7 +117,7 @@ test('sortRowsByColumn sorts alphabetically by the given column value', () => {
 
 test('sortRowsByColumn does not mutate the original array', () => {
   const original = [...rows]
-  sortRowsByColumn(rows, (r) => r.email)
+  sortRowsByColumn(rows, [(r) => r.email])
   assert.deepEqual(rows, original)
 })
 
@@ -149,34 +149,47 @@ test('applyPendingOverrides is a no-op with an empty pending map', () => {
   assert.deepEqual(applyPendingOverrides(rows, new Map(), (r) => r.email), rows)
 })
 
-test('sortRowsByColumn is stable for equal values', () => {
+test('sortRowsByColumn breaks ties on the primary column using the next column(s), instead of leaving them in API response order', () => {
+  const withTies = [
+    { from: 'contact@bar.fr', to: 'zzz@bar.fr' },
+    { from: 'contact@bar.fr', to: 'aaa@bar.fr' },
+    { from: 'admin@bar.fr', to: 'mmm@bar.fr' },
+  ]
+  const sorted = sortRowsByColumn(withTies, [(r) => r.from, (r) => r.to])
+  assert.deepEqual(
+    sorted.map((r) => `${r.from}|${r.to}`),
+    ['admin@bar.fr|mmm@bar.fr', 'contact@bar.fr|aaa@bar.fr', 'contact@bar.fr|zzz@bar.fr'],
+  )
+})
+
+test('sortRowsByColumn is stable when every column is tied', () => {
   const withTies = [
     { name: 'first', email: 'same@bar.fr' },
     { name: 'second', email: 'same@bar.fr' },
     { name: 'third', email: 'same@bar.fr' },
   ]
-  const sorted = sortRowsByColumn(withTies, (r) => r.email)
+  const sorted = sortRowsByColumn(withTies, [(r) => r.email])
   assert.deepEqual(
     sorted.map((r) => r.name),
     ['first', 'second', 'third'],
   )
 })
 
-test('visibleRows filters then sorts by the given key, matching what a Table renders', () => {
-  const result = visibleRows(rows, undefined, (r) => [r.name, r.email], (r) => r.email)
+test('visibleRows filters then sorts by the given keys, matching what a Table renders', () => {
+  const result = visibleRows(rows, undefined, (r) => [r.name, r.email], [(r) => r.email])
   assert.deepEqual(
     result.map((r) => r.name),
     ['admin', 'billing', 'contact'],
   )
 })
 
-test('visibleRows without a sortKey only filters, preserving original order (same as Table with a single column)', () => {
+test('visibleRows without sortKeys only filters, preserving original order (same as Table with a single column)', () => {
   const result = visibleRows(rows, undefined, (r) => [r.name, r.email])
   assert.deepEqual(result, rows)
 })
 
 test('visibleRows applies the filter before sorting (a row excluded by the filter never resurfaces via sort)', () => {
-  const result = visibleRows(rows, 'bar.fr', (r) => [r.name, r.email], (r) => r.email)
+  const result = visibleRows(rows, 'bar.fr', (r) => [r.name, r.email], [(r) => r.email])
   assert.deepEqual(
     result.map((r) => r.name),
     ['admin', 'contact'],
@@ -189,7 +202,7 @@ test('visibleRows: a caller building `selected = result[index]` must get the exa
     { account: 'ffs', domain: 'ecole-francaise-de-speleologie.com' },
     { account: 'ffs', domain: 'ffcanyon.fr' },
   ]
-  const result = visibleRows(items, undefined, (i) => [i.account, i.domain], (i) => i.domain)
+  const result = visibleRows(items, undefined, (i) => [i.account, i.domain], [(i) => i.domain])
   // Sorted by domain: comera-sarl.fr, ecole-francaise-de-speleologie.com, ffcanyon.fr
   assert.deepEqual(
     result.map((i) => i.domain),

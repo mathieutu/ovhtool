@@ -23,7 +23,7 @@ export type TableColumn<T> = {
  * on screen.
  */
 export function visibleTableRows<T>(rows: T[], columns: TableColumn<T>[], filter: string, searchFields: (item: T) => (string | number)[]): T[] {
-  return visibleRows(rows, filter, searchFields, columns[1]?.render)
+  return visibleRows(rows, filter, searchFields, columns.slice(1).map((column) => column.render))
 }
 
 export type TableProps<T> = {

@@ -30,24 +30,39 @@ export function toMarkdownTable(header: string[], rows: (string | number)[][]): 
   return [line(cellRows[0]!), separator, ...cellRows.slice(1).map(line)].join('\n')
 }
 
-/** Sorts `rows` alphabetically by `columnValue(item)` (stable, case-sensitive `localeCompare`) — used to give every `Table` a predictable default order (its second column) regardless of API response order. */
-export function sortRowsByColumn<T>(rows: T[], columnValue: (item: T) => string): T[] {
-  return [...rows].sort((a, b) => columnValue(a).localeCompare(columnValue(b)))
+/**
+ * Sorts `rows` alphabetically by `columnValues[0](item)` (case-sensitive
+ * `localeCompare`), falling back to the next `columnValues` entries to break
+ * ties — used to give every `Table` a predictable default order regardless
+ * of API response order. Without the fallbacks, two rows tied on the primary
+ * key would keep whatever relative order the API happened to return them in
+ * that call, which can vary from one fetch to the next and looks like a
+ * random shuffle on screen.
+ */
+export function sortRowsByColumn<T>(rows: T[], columnValues: ((item: T) => string)[]): T[] {
+  return [...rows].sort((a, b) => {
+    for (const columnValue of columnValues) {
+      const diff = columnValue(a).localeCompare(columnValue(b))
+      if (diff !== 0) return diff
+    }
+    return 0
+  })
 }
 
 /**
  * The exact filter+sort transformation a `Table` applies before rendering:
- * case-insensitive substring filter, then (if `sortKey` is given — a
- * `Table`'s second column) an alphabetical sort. A screen's own "what row is
+ * case-insensitive substring filter, then (if `sortKeys` is given — a
+ * `Table`'s columns from the second one onward) an alphabetical sort using
+ * later columns to break ties on earlier ones. A screen's own "what row is
  * selected"/"copy this to the clipboard" logic must reuse this *same*
- * function (with the same `sortKey`) rather than filtering separately —
+ * function (with the same `sortKeys`) rather than filtering separately —
  * otherwise `selectedIndex` (which indexes the row order the user actually
  * sees on screen) would desync from the unsorted list and resolve to the
  * wrong row.
  */
-export function visibleRows<T>(rows: T[], filter: string | undefined, searchFields: (item: T) => (string | number)[], sortKey?: (item: T) => string): T[] {
+export function visibleRows<T>(rows: T[], filter: string | undefined, searchFields: (item: T) => (string | number)[], sortKeys?: ((item: T) => string)[]): T[] {
   const filtered = filterRows(rows, filter, searchFields)
-  return sortKey ? sortRowsByColumn(filtered, sortKey) : filtered
+  return sortKeys?.length ? sortRowsByColumn(filtered, sortKeys) : filtered
 }
 
 /**
