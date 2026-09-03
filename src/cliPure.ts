@@ -197,6 +197,38 @@ export function computeScrollWindow(selectedIndex: number, total: number, visibl
   return { start, end: start + visibleCount }
 }
 
+/**
+ * Encodes `text` as a minimal RTF document in a monospace font — used by
+ * `clipboard.ts` to give a copied table a second, rich-text flavor that
+ * keeps its column alignment when pasted into an app that doesn't itself
+ * compose in a monospace font (Mail.app, Outlook, Gmail...); a plain
+ * terminal paste doesn't need this because the terminal's own font already
+ * is monospace. Non-ASCII characters are escaped as RTF's own `\uN?`
+ * Unicode escape (decimal, signed 16-bit, with a literal `?` fallback for
+ * readers that ignore `\u`) rather than relying on a specific 8-bit code
+ * page, so accented text (café, à, é...) round-trips correctly regardless
+ * of the reading app's locale.
+ */
+export function textToRtf(text: string): string {
+  const toSigned16 = (n: number) => (n > 0x7fff ? n - 0x10000 : n)
+  let body = ''
+  for (const char of text) {
+    const code = char.codePointAt(0)!
+    if (char === '\\' || char === '{' || char === '}') body += `\\${char}`
+    else if (char === '\n') body += '\\par\n'
+    else if (char === '\r') continue
+    else if (char === '\t') body += '\\tab '
+    else if (code < 128) body += char
+    else if (code <= 0xffff) body += `\\u${toSigned16(code)}?`
+    else {
+      const high = 0xd800 + ((code - 0x10000) >> 10)
+      const low = 0xdc00 + ((code - 0x10000) & 0x3ff)
+      body += `\\u${toSigned16(high)}?\\u${toSigned16(low)}?`
+    }
+  }
+  return `{\\rtf1\\ansi\\ansicpg1252\\uc1\\deff0{\\fonttbl{\\f0\\fmodern\\fcharset0 Courier New;}}\\f0\\fs20 ${body}}`
+}
+
 const ESC = String.fromCharCode(27)
 const BEL = String.fromCharCode(7)
 
