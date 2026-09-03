@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { loadConfig, saveConfig, requireProfile, withCachedAccount, type Config, type Profile } from '../../config.ts'
+import { loadConfig, saveConfig, requireProfile, withCachedAccount, getCachedAccount, type Config, type Profile } from '../../config.ts'
 import { createOvhClient, type OvhClient } from '../../ovhClient.ts'
 import { resolveAccount } from '../../accountResolver.ts'
 import { checkDomainAccess } from '../../commands/accounts.ts'
@@ -60,6 +60,21 @@ export type DomainContext = {
  *   domains — one fewer step when several accounts are configured, and it
  *   degrades to the same single-account list when only one is.
  */
+/**
+ * A domain reachable from several accounts (shared/reseller access) would
+ * otherwise show up once per account. When one of them is already pinned
+ * in the domain→account cache, that's the choice a previous pick already
+ * made — keep only that row and drop the others instead of listing a
+ * decision that's already been taken. Domains with no cached account yet
+ * are left with every candidate, since there's nothing to prefer.
+ */
+export function dedupeByCachedAccount(config: Config, options: DomainOption[]): DomainOption[] {
+  return options.filter((option) => {
+    const cached = getCachedAccount(config, option.domain)
+    return !cached || cached === option.account
+  })
+}
+
 export function useDomainContext(initialDomain: string | undefined, initialAccount: string | undefined, listDomains: (client: OvhClient) => Promise<string[]>): DomainContext {
   const [phase, setPhase] = useState<DomainContextPhase>({ kind: 'resolving' })
   const candidateResolve = useRef<((name: string) => void) | null>(null)
@@ -73,7 +88,8 @@ export function useDomainContext(initialDomain: string | undefined, initialAccou
         return domains.map((domain): DomainOption => ({ account, domain }))
       }),
     )
-    return perAccount.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+    const options = perAccount.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+    return dedupeByCachedAccount(config, options)
   }
 
   async function resolveForDomain(config: Config, domain: string): Promise<DomainContextPhase> {
