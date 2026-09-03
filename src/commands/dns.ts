@@ -1,6 +1,7 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, diffUpdate, type ActionDiff } from '../diff.ts'
 import { ValidationError } from '../errors.ts'
+import { waitUntilReflected } from './pollUntil.ts'
 
 export const DNS_RECORD_TYPES = [
   'A',
@@ -87,6 +88,10 @@ export async function applyAddDnsRecord(client: OvhClient, params: AddDnsRecordP
     ttl: params.ttl,
   })
   await refreshZone(client, params.zone)
+  await waitUntilReflected(async () => {
+    const ids = await client.request<number[]>('GET', `/domain/zone/${params.zone}/record`)
+    return ids.includes(record.id)
+  })
   return record
 }
 
@@ -116,6 +121,14 @@ export async function applyUpdateDnsRecord(client: OvhClient, params: UpdateDnsR
   if (params.ttl !== undefined) payload.ttl = params.ttl
   await client.request('PUT', `/domain/zone/${params.zone}/record/${params.id}`, payload)
   await refreshZone(client, params.zone)
+  await waitUntilReflected(async () => {
+    const updated = await fetchDnsRecord(client, params.zone, params.id)
+    return (
+      (params.subDomain === undefined || updated.subDomain === params.subDomain) &&
+      (params.target === undefined || updated.target === params.target) &&
+      (params.ttl === undefined || updated.ttl === params.ttl)
+    )
+  })
 }
 
 export function prepareDeleteDnsRecord(before: DnsRecord): ActionDiff {
@@ -130,4 +143,8 @@ export function prepareDeleteDnsRecord(before: DnsRecord): ActionDiff {
 export async function applyDeleteDnsRecord(client: OvhClient, zone: string, id: number): Promise<void> {
   await client.request('DELETE', `/domain/zone/${zone}/record/${id}`)
   await refreshZone(client, zone)
+  await waitUntilReflected(async () => {
+    const ids = await client.request<number[]>('GET', `/domain/zone/${zone}/record`)
+    return !ids.includes(id)
+  })
 }
