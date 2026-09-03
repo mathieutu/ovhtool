@@ -1,7 +1,6 @@
 {
   "name": "ovhtool",
   "version": "0.1.0",
-  "private": true,
   "description": "CLI to manage DNS zones, mail accounts and email redirections across several OVH accounts",
   "keywords": [
     "ovh",
@@ -30,7 +29,8 @@
     "ovhtool": "yarn build && node ./dist/bin/ovhtool.js",
     "test": "node --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "prepare": "yarn build"
+    "prepare": "yarn build",
+    "release": "release-it"
   },
   "dependencies": {
     "chalk": "^6.0.0",
@@ -43,6 +43,8 @@
   "devDependencies": {
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
+    "gitmoji-changelog": "^2.3.0",
+    "release-it": "^21.0.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },

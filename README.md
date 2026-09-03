@@ -11,14 +11,26 @@ as all required flags are provided).
 ## Installation
 
 ```bash
+npm install -g ovhtool
+```
+
+or, without installing anything, run it directly via `npx`:
+
+```bash
+npx ovhtool <command>
+```
+
+### Contributing / running from source
+
+```bash
 yarn install
 yarn build
 yarn link
 ```
 
-`ovhtool` is then available globally. `yarn install` runs the build
-automatically (via the `prepare` script); rerun `yarn build` after pulling
-changes.
+`ovhtool` is then available globally, built from your local checkout instead
+of the published package. `yarn install` runs the build automatically (via
+the `prepare` script); rerun `yarn build` after pulling changes.
 
 > **Note**: the interactive layer is built with [Ink](https://github.com/vadimdemedes/ink)
 > (React for CLIs), which requires JSX — a real TypeScript build (`tsc`,
