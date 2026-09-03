@@ -3,13 +3,19 @@ import type { ScreenName } from './app.tsx'
 
 export type Theme = { color: string; label: string }
 
-/** One color + display label per service, used for the header breadcrumb and as the screen's primary color (selected rows, placeholders, borders, …). */
+/**
+ * One color + display label per service, used for the header breadcrumb and
+ * as the screen's primary color (selected rows, placeholders, borders, …).
+ * Colors follow the rainbow, in the same order services are listed on the
+ * home menu, so scrolling down sweeps through the same sequence as the
+ * "ovhtool" title in the header.
+ */
 const SERVICE_THEMES: Record<ScreenName, Theme> = {
-  home: { color: 'cyan', label: 'ovhtool' },
-  dns: { color: 'cyan', label: 'DNS' },
-  mail: { color: 'magenta', label: 'Mail' },
-  mailRedirect: { color: 'yellow', label: 'Redirections' },
-  accounts: { color: 'green', label: 'Accounts' },
+  home: { color: 'gray', label: 'ovhtool' },
+  dns: { color: 'red', label: 'Domains' },
+  mail: { color: 'yellow', label: 'Mail Accounts' },
+  mailRedirect: { color: 'green', label: 'Mail Redirections' },
+  accounts: { color: 'cyan', label: 'Accounts' },
 }
 
 const ThemeContext = createContext<Theme>(SERVICE_THEMES.home)

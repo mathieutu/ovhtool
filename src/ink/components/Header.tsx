@@ -2,6 +2,7 @@ import React from 'react'
 import { Box, Text } from 'ink'
 import { useTheme } from '../theme.ts'
 import { Spinner } from './primitives/Spinner.tsx'
+import { Rainbow } from './primitives/Rainbow.tsx'
 
 export type HeaderProps = {
   /** Zone or domain currently in scope. */
@@ -37,8 +38,13 @@ export function Header({ context, pinned, revalidating }: HeaderProps) {
   const parts = (pinned ? [context, label] : [label, context]).filter((part): part is string => Boolean(part))
   return (
     <Box borderStyle="single" borderColor="gray" paddingX={1} justifyContent="space-between">
-      <Text bold color={color}>
-        {parts.join(' · ')}
+      <Text bold>
+        {parts.map((part, i) => (
+          <React.Fragment key={part}>
+            {i > 0 ? <Text color={color}> · </Text> : null}
+            {part === label && label === 'ovhtool' ? <Rainbow text={part} bold /> : <Text color={color}>{part}</Text>}
+          </React.Fragment>
+        ))}
       </Text>
       {revalidating ? <Spinner label="refreshing…" /> : null}
     </Box>

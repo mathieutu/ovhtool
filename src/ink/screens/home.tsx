@@ -17,10 +17,9 @@ export type HomeScreenProps = {
 }
 
 const DOMAINS: { screen: ScreenName; label: string }[] = [
-  { screen: 'dns', label: 'DNS' },
-  { screen: 'mail', label: 'Mail' },
-  { screen: 'mailRedirect', label: 'Redirections' },
-  { screen: 'accounts', label: 'Accounts' },
+  { screen: 'dns', label: 'Domains' },
+  { screen: 'mail', label: 'Mail Accounts' },
+  { screen: 'mailRedirect', label: 'Mail Redirections' },
 ]
 
 /** Home screen (ADR-0005): a menu of the domains, selecting one opens its dashboard. */
@@ -46,6 +45,7 @@ export function HomeScreen({ onSelect, pinnedDomain, onClearPinnedDomain }: Home
     { key: 'upArrow', label: 'up', onTrigger: () => setIndex(Math.max(0, clampedIndex - 1)) },
     { key: 'downArrow', label: 'down', onTrigger: () => setIndex(Math.min(filtered.length - 1, clampedIndex + 1)) },
     { key: 'return', label: 'open', when: filtered.length > 0, onTrigger: () => onSelect(filtered[clampedIndex]!.screen) },
+    { ctrl: 'a', label: 'accounts', onTrigger: () => onSelect('accounts') },
     { key: 'escape', label: pinnedDomain ? 'forget domain' : 'quit', onTrigger: () => (pinnedDomain ? onClearPinnedDomain() : exit()) },
   ])
 
