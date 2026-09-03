@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { render } from 'ink'
 
 import { toOvhtoolError, ValidationError } from './errors.ts'
+import { isPlausibleDomain } from './cliPure.ts'
 import * as agent from './agentActions.ts'
 import { App, ErrorBoundary, type AppProps, type ScreenName } from './ink/app.tsx'
 import type { DnsInitialPanel } from './ink/screens/dns.tsx'
@@ -465,7 +466,35 @@ program.argument('[service]', 'Optional: jump straight to this service (dns, mai
 program.action((domain: string | undefined, service: string | undefined) =>
   dispatch(
     async () => requireHumanMode('dns, mail, mail-redirect, accounts, auth'),
-    () => ({ initialScreen: (service && DOMAIN_FIRST_SERVICES[service]) || ('home' as ScreenName), pinnedDomain: domain, pinnedAccount: program.opts().account }),
+    () => {
+      // A mistyped subcommand (e.g. "ovhtool redirections foo.dev") never
+      // reaches any `program.command(...)` handler — Commander falls
+      // through to these two bare positional arguments instead, which would
+      // otherwise silently pin "redirections" as the domain and go home.
+      // Reject early rather than let that surface later as a confusing
+      // "no account has access to domain X".
+      const validServices = Object.keys(DOMAIN_FIRST_SERVICES).join(', ')
+      if (domain !== undefined && !isPlausibleDomain(domain)) {
+        throw new ValidationError(
+          `"${domain}" isn't a known subcommand and doesn't look like a domain (no "."). Valid subcommands: ${validServices}, auth. To pin a domain instead, pass a full one (e.g. "ovhtool example.com").`,
+          'invalid_domain',
+        )
+      }
+      // The first word is just as likely to be the actual mistake (a
+      // mistyped subcommand, as above) as the second, so the message below
+      // shows both valid readings instead of blaming whichever happens to
+      // occupy the "service" slot.
+      if (service !== undefined && !(service in DOMAIN_FIRST_SERVICES)) {
+        // Deliberately doesn't guess which of the two words was the typo by
+        // echoing it back into a "did you mean" example — "redirections" is
+        // just as plausible a mistyped service as it is an odd domain name.
+        throw new ValidationError(
+          `"${domain} ${service}" doesn't match a known usage: run a subcommand directly ("ovhtool <service> [domain]") or pin a domain first ("ovhtool [domain] <service>"). Valid services: ${validServices}.`,
+          'unknown_service',
+        )
+      }
+      return { initialScreen: (service && DOMAIN_FIRST_SERVICES[service]) || ('home' as ScreenName), pinnedDomain: domain, pinnedAccount: program.opts().account }
+    },
   )(),
 )
 

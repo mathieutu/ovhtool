@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -206,4 +206,14 @@ test('ensureEmailDomain appends "@domain" to a bare local part', () => {
 
 test('ensureEmailDomain leaves a full address untouched', () => {
   assert.equal(ensureEmailDomain('contact@other.com', 'example.com'), 'contact@other.com')
+})
+
+test('isPlausibleDomain accepts a dotted domain', () => {
+  assert.equal(isPlausibleDomain('example.com'), true)
+  assert.equal(isPlausibleDomain('www.example.co.uk'), true)
+})
+
+test('isPlausibleDomain rejects a bare word (likely a mistyped subcommand)', () => {
+  assert.equal(isPlausibleDomain('redirections'), false)
+  assert.equal(isPlausibleDomain('dns'), false)
 })

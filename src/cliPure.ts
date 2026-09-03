@@ -56,6 +56,22 @@ export function fullDomain(zone: string, subDomain: string): string {
 }
 
 /**
+ * Loose sanity check for the CLI's bare `[domain]` argument: every domain
+ * this tool ever deals with is a registered zone bought through OVH, always
+ * at least a `label.tld` — so a value with no "." at all is never a real
+ * domain, and near-certainly a mistyped subcommand (`ovhtool redirections`
+ * meaning `mail-redirect`) landing here instead, since Commander only falls
+ * through to this bare-argument handler when the word didn't match any
+ * registered subcommand. Deliberately not a full domain-syntax validator —
+ * OVH's own API is the source of truth for whether a dotted string is an
+ * actual, accessible domain; this only catches the "obviously not a domain"
+ * case early, with a clearer message than a downstream API 404 would give.
+ */
+export function isPlausibleDomain(value: string): boolean {
+  return value.includes('.')
+}
+
+/**
  * Strips an accidentally-typed `domain` suffix from a local-part-only field
  * (e.g. a DNS subdomain input) — so typing "www.example.com" while the zone
  * is "example.com" still resolves to "www" instead of doubling up into
