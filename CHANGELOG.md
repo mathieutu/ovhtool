@@ -1,5 +1,21 @@
 # Changelog
 
+<a name="0.2.0"></a>
+## 0.2.0 (2026-09-03)
+
+### Added
+
+- ✨ Tolerate a redundant domain suffix in DNS/mail form fields [[7141cda](https://github.com/mathieutu/ovhtool/commit/7141cda4946b65275f46428a5a2da62a07a6641d)]
+- ✨ Add a manual Ctrl+R refresh on every API-backed screen [[00d82b3](https://github.com/mathieutu/ovhtool/commit/00d82b339dc78163f8c10a23a5362fbf3004eb30)]
+
+### Fixed
+
+- 🐛 Reject a mistyped subcommand instead of silently pinning it as a domain [[cb8e038](https://github.com/mathieutu/ovhtool/commit/cb8e038ffade64c2abbd4dfb30d1c3c1fdf7c119)]
+- 🐛 Reword OVH&#x27;s &quot;already being processed&quot; 409 into an actionable message [[c12965d](https://github.com/mathieutu/ovhtool/commit/c12965dfce5e3d1380448372430bc1593401a09a)]
+- 🐛 Retry the read after a DNS/redirection mutation until it&#x27;s reflected [[e0b7da2](https://github.com/mathieutu/ovhtool/commit/e0b7da20bd0a7e473ae378ef76b1e8a68753c8d9)]
+- 🐛 Fix background-revalidation &quot;jump&quot; on DNS/mail/redirection tables [[31e8ed1](https://github.com/mathieutu/ovhtool/commit/31e8ed1f6b4eab6a3f0aaaab8ad383fb8c2b344e)]
+
+
 <a name="0.1.0"></a>
 ## 0.1.0 (2026-09-03)
 
