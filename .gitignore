@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Local AI assistant state (not project config)
+.claude/
+
+# Local runtime config (credentials) — never commit this
+.ovhtool/
+config.json
