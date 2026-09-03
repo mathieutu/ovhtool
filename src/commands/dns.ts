@@ -1,7 +1,7 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, diffUpdate, type ActionDiff } from '../diff.ts'
 import { ValidationError } from '../errors.ts'
-import { waitUntilReflected } from './pollUntil.ts'
+import { waitUntilReflected, explainConflict } from './pollUntil.ts'
 
 export const DNS_RECORD_TYPES = [
   'A',
@@ -60,7 +60,7 @@ export async function fetchDnsRecord(client: OvhClient, zone: string, id: number
 }
 
 export async function refreshZone(client: OvhClient, zone: string): Promise<void> {
-  await client.request('POST', `/domain/zone/${zone}/refresh`)
+  await explainConflict(() => client.request('POST', `/domain/zone/${zone}/refresh`))
 }
 
 export type AddDnsRecordParams = {
@@ -81,12 +81,14 @@ export function prepareAddDnsRecord(params: AddDnsRecordParams): ActionDiff {
 }
 
 export async function applyAddDnsRecord(client: OvhClient, params: AddDnsRecordParams): Promise<DnsRecord> {
-  const record = await client.request<DnsRecord>('POST', `/domain/zone/${params.zone}/record`, {
-    subDomain: params.subDomain,
-    target: params.target,
-    fieldType: params.fieldType,
-    ttl: params.ttl,
-  })
+  const record = await explainConflict(() =>
+    client.request<DnsRecord>('POST', `/domain/zone/${params.zone}/record`, {
+      subDomain: params.subDomain,
+      target: params.target,
+      fieldType: params.fieldType,
+      ttl: params.ttl,
+    }),
+  )
   await refreshZone(client, params.zone)
   await waitUntilReflected(async () => {
     const ids = await client.request<number[]>('GET', `/domain/zone/${params.zone}/record`)
@@ -119,7 +121,7 @@ export async function applyUpdateDnsRecord(client: OvhClient, params: UpdateDnsR
   if (params.subDomain !== undefined) payload.subDomain = params.subDomain
   if (params.target !== undefined) payload.target = params.target
   if (params.ttl !== undefined) payload.ttl = params.ttl
-  await client.request('PUT', `/domain/zone/${params.zone}/record/${params.id}`, payload)
+  await explainConflict(() => client.request('PUT', `/domain/zone/${params.zone}/record/${params.id}`, payload))
   await refreshZone(client, params.zone)
   await waitUntilReflected(async () => {
     const updated = await fetchDnsRecord(client, params.zone, params.id)
@@ -141,7 +143,7 @@ export function prepareDeleteDnsRecord(before: DnsRecord): ActionDiff {
 }
 
 export async function applyDeleteDnsRecord(client: OvhClient, zone: string, id: number): Promise<void> {
-  await client.request('DELETE', `/domain/zone/${zone}/record/${id}`)
+  await explainConflict(() => client.request('DELETE', `/domain/zone/${zone}/record/${id}`))
   await refreshZone(client, zone)
   await waitUntilReflected(async () => {
     const ids = await client.request<number[]>('GET', `/domain/zone/${zone}/record`)

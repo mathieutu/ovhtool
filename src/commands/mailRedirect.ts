@@ -1,6 +1,6 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, type ActionDiff } from '../diff.ts'
-import { waitUntilReflected } from './pollUntil.ts'
+import { waitUntilReflected, explainConflict } from './pollUntil.ts'
 
 export type MailRedirection = {
   id: string
@@ -32,11 +32,13 @@ export function prepareAddMailRedirection(params: AddMailRedirectionParams): Act
 }
 
 export async function applyAddMailRedirection(client: OvhClient, params: AddMailRedirectionParams): Promise<MailRedirection> {
-  const redirection = await client.request<MailRedirection>('POST', `/email/domain/${params.domain}/redirection`, {
-    from: params.from,
-    to: params.to,
-    localCopy: false,
-  })
+  const redirection = await explainConflict(() =>
+    client.request<MailRedirection>('POST', `/email/domain/${params.domain}/redirection`, {
+      from: params.from,
+      to: params.to,
+      localCopy: false,
+    }),
+  )
   await waitUntilReflected(async () => {
     const ids = await client.request<string[]>('GET', `/email/domain/${params.domain}/redirection`)
     return ids.includes(redirection.id)
@@ -49,7 +51,7 @@ export function prepareRemoveMailRedirection(before: MailRedirection): ActionDif
 }
 
 export async function applyRemoveMailRedirection(client: OvhClient, domain: string, id: string): Promise<void> {
-  await client.request('DELETE', `/email/domain/${domain}/redirection/${id}`)
+  await explainConflict(() => client.request('DELETE', `/email/domain/${domain}/redirection/${id}`))
   await waitUntilReflected(async () => {
     const ids = await client.request<string[]>('GET', `/email/domain/${domain}/redirection`)
     return !ids.includes(id)

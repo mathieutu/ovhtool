@@ -1,5 +1,6 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, type ActionDiff } from '../diff.ts'
+import { explainConflict } from './pollUntil.ts'
 
 export type MailAccount = {
   accountName: string
@@ -44,12 +45,14 @@ export function prepareCreateMailAccount(params: CreateMailAccountParams): Actio
 }
 
 export async function applyCreateMailAccount(client: OvhClient, params: CreateMailAccountParams): Promise<MailAccount> {
-  return client.request<MailAccount>('POST', `/email/domain/${params.domain}/account`, {
-    accountName: params.accountName,
-    password: params.password,
-    size: params.size,
-    description: params.description,
-  })
+  return explainConflict(() =>
+    client.request<MailAccount>('POST', `/email/domain/${params.domain}/account`, {
+      accountName: params.accountName,
+      password: params.password,
+      size: params.size,
+      description: params.description,
+    }),
+  )
 }
 
 export function prepareDeleteMailAccount(before: MailAccount): ActionDiff {
@@ -61,7 +64,7 @@ export function prepareDeleteMailAccount(before: MailAccount): ActionDiff {
 }
 
 export async function applyDeleteMailAccount(client: OvhClient, domain: string, accountName: string): Promise<void> {
-  await client.request('DELETE', `/email/domain/${domain}/account/${accountName}`)
+  await explainConflict(() => client.request('DELETE', `/email/domain/${domain}/account/${accountName}`))
 }
 
 export type ChangeMailPasswordParams = {
@@ -76,7 +79,9 @@ export function preparePasswdMailAccount(): ActionDiff {
 }
 
 export async function applyChangeMailPassword(client: OvhClient, params: ChangeMailPasswordParams): Promise<void> {
-  await client.request('POST', `/email/domain/${params.domain}/account/${params.accountName}/changePassword`, {
-    password: params.password,
-  })
+  await explainConflict(() =>
+    client.request('POST', `/email/domain/${params.domain}/account/${params.accountName}/changePassword`, {
+      password: params.password,
+    }),
+  )
 }

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { assertValidRecordType, isValidRecordType, prepareUpdateDnsRecord, prepareDeleteDnsRecord, type DnsRecord } from '../src/commands/dns.ts'
 import { preparePasswdMailAccount } from '../src/commands/mail.ts'
 import { listAccounts, setDefaultAccount, removeAccount, forgetDomain } from '../src/commands/accounts.ts'
-import { ValidationError } from '../src/errors.ts'
+import { explainConflict } from '../src/commands/pollUntil.ts'
+import { ValidationError, ApiError } from '../src/errors.ts'
 import type { Config } from '../src/config.ts'
 
 test('isValidRecordType / assertValidRecordType accept known types', () => {
@@ -89,4 +90,41 @@ test('forgetDomain is idempotent on a domain absent from the cache', () => {
   const config = makeConfig()
   const updated = forgetDomain(config, 'unknown.fr')
   assert.deepEqual(updated.domainCache, config.domainCache)
+})
+
+test('explainConflict returns the result when the action succeeds', async () => {
+  const result = await explainConflict(async () => 'ok')
+  assert.equal(result, 'ok')
+})
+
+test('explainConflict rewords a 409 "already being processed" conflict into an actionable message, keeping OVH\'s own identifier', async () => {
+  await assert.rejects(
+    () =>
+      explainConflict(async () => {
+        throw new ApiError('This element is already being processed: foo@example.com', 'ovh_http_409')
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ApiError)
+      assert.equal(error.message, 'This element is currently being processed by OVH: foo@example.com. Try again later.')
+      assert.equal(error.code, 'ovh_task_conflict')
+      return true
+    },
+  )
+})
+
+test('explainConflict never rewords or retries a non-409 error', async () => {
+  let calls = 0
+  await assert.rejects(
+    () =>
+      explainConflict(async () => {
+        calls++
+        throw new ApiError('Not found', 'ovh_http_404')
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ApiError)
+      assert.equal(error.message, 'Not found')
+      return true
+    },
+  )
+  assert.equal(calls, 1)
 })
