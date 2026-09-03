@@ -44,13 +44,17 @@ export type TableProps<T> = {
  * Extra terminal rows already spent outside the data rows: the parent
  * screen's `Header` (3: top border, content, bottom border), this
  * component's own filter + blank margin + column-header lines (3), the
- * parent's `Footer` (1 in the common case — just the binding hints, no
- * status/revalidating line), and the scroll-position indicator line (`12-27
- * / 340`) that appears once the list needs to scroll. Tuned to exactly this
- * budget rather than padded "to be safe": an over-generous reserve quietly
- * wastes a row of screen space on every single table, permanently.
+ * parent's `Footer` (2: its worst case, a status/revalidating line above the
+ * binding hints — budgeting for the common 1-line case instead would make
+ * the whole fixed-height frame overflow by a row the moment that second line
+ * appears, which is exactly what a background revalidation's spinner did:
+ * a visible "jump" instead of a readable indicator), and the scroll-position
+ * indicator line (`12-27 / 340`) that appears once the list needs to scroll.
+ * Tuned to exactly this budget rather than padded "to be safe": an
+ * over-generous reserve quietly wastes a row of screen space on every single
+ * table, permanently.
  */
-const RESERVED_ROWS = 3 + 3 + 1 + 1
+const RESERVED_ROWS = 3 + 3 + 2 + 1
 const MIN_VISIBLE_ROWS = 3
 
 export function useTerminalSize(): { rows: number; columns: number } {

@@ -166,7 +166,7 @@ function MailRedirectDashboard({
   )
 
   return (
-    <ScreenLayout header={<Header context={domain} pinned={isDomainPinned} />} footer={<Footer bindings={bindings} status={statusMessage} revalidating={revalidating && data !== null && !statusMessage} />}>
+    <ScreenLayout header={<Header context={domain} pinned={isDomainPinned} revalidating={revalidating && data !== null} />} footer={<Footer bindings={bindings} status={statusMessage} />}>
       {status === 'loading' && !data ? (
         <Spinner label="Loading redirections…" />
       ) : loadError ? (

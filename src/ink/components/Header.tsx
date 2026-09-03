@@ -1,6 +1,7 @@
 import React from 'react'
 import { Box, Text } from 'ink'
 import { useTheme } from '../theme.ts'
+import { Spinner } from './primitives/Spinner.tsx'
 
 export type HeaderProps = {
   /** Zone or domain currently in scope. */
@@ -14,6 +15,16 @@ export type HeaderProps = {
    * `<service> · <domain>` (ADR-0007).
    */
   pinned?: boolean
+  /**
+   * Shows a small right-aligned spinner for a background revalidation
+   * (`useAsyncData`'s `revalidating`) while already-cached data stays on
+   * screen — lives here rather than in the `Footer` because this bordered
+   * box is always exactly 3 rows tall regardless of its content, so it can
+   * never grow into an extra terminal row the way a conditional `Footer`
+   * line would (that used to visibly "jump" the whole fixed-height layout
+   * for the duration of every background refresh).
+   */
+  revalidating?: boolean
 }
 
 /**
@@ -21,14 +32,15 @@ export type HeaderProps = {
  * and its color come from the current `ThemeProvider` (set once per screen
  * in `app.tsx`), so every screen stays visually identifiable at a glance.
  */
-export function Header({ context, pinned }: HeaderProps) {
+export function Header({ context, pinned, revalidating }: HeaderProps) {
   const { color, label } = useTheme()
   const parts = (pinned ? [context, label] : [label, context]).filter((part): part is string => Boolean(part))
   return (
-    <Box borderStyle="single" borderColor="gray" paddingX={1}>
+    <Box borderStyle="single" borderColor="gray" paddingX={1} justifyContent="space-between">
       <Text bold color={color}>
         {parts.join(' · ')}
       </Text>
+      {revalidating ? <Spinner label="refreshing…" /> : null}
     </Box>
   )
 }

@@ -180,7 +180,7 @@ function DnsDashboard({
   ])
 
   return (
-    <ScreenLayout header={<Header context={zone} pinned={isDomainPinned} />} footer={<Footer bindings={bindings} status={statusMessage} revalidating={revalidating && data !== null && !statusMessage} />}>
+    <ScreenLayout header={<Header context={zone} pinned={isDomainPinned} revalidating={revalidating && data !== null} />} footer={<Footer bindings={bindings} status={statusMessage} />}>
       {status === 'loading' && !data ? (
         <Spinner label="Loading records…" />
       ) : loadError ? (
