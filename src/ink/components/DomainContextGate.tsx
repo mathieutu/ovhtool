@@ -26,7 +26,7 @@ export type DomainContextGateProps = {
  * mounts this while `domainContext.phase.kind !== 'ready'`.
  */
 export function DomainContextGate({ domainLabel, domainContext, onHome }: DomainContextGateProps) {
-  const { phase, pickDomain, chooseCandidate, goBack } = domainContext
+  const { phase, pickDomain, chooseCandidate, goBack, refreshDomainOptions } = domainContext
   const [manualEntry, setManualEntry] = useState(false)
   const [manualAccount, setManualAccount] = useState('')
   const [manualDomain, setManualDomain] = useState('')
@@ -49,6 +49,7 @@ export function DomainContextGate({ domainLabel, domainContext, onHome }: Domain
   const { bindings } = useKeymap([
     { key: 'return', label: 'open', when: phase.kind === 'pick-domain' && !manualEntry && Boolean(selected), onTrigger: () => selected && pickDomain(selected) },
     { ctrl: 'n', label: `enter a ${domainLabel} manually`, when: phase.kind === 'pick-domain' && !manualEntry, onTrigger: () => setManualEntry(true) },
+    { ctrl: 'r', label: 'refresh', when: phase.kind === 'pick-domain' && !manualEntry, onTrigger: refreshDomainOptions },
     {
       key: 'escape',
       label: 'back',

@@ -14,7 +14,8 @@ export function Footer({ bindings, status }: FooterProps) {
   return (
     <Box flexDirection="column" paddingX={1}>
       {status ? <Text color="green">{status}</Text> : null}
-      <Text dimColor>{bindings.join(' · ')}</Text>
+      {/* truncate-middle, not -end: the last binding is always "Esc back" (the one universal, most-relied-on hint) — losing it to truncation would be worse than losing one of the less critical bindings in the middle. */}
+      <Text dimColor wrap="truncate-middle">{bindings.join(' · ')}</Text>
     </Box>
   )
 }

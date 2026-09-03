@@ -34,6 +34,8 @@ export type DomainContext = {
    * ever reaching home.)
    */
   revealDomainPicker: () => void
+  /** Re-fetches the domain list shown by the current `pick-domain` phase in place, keeping its `previous` (so Escape still steps back to wherever it did before the refresh) — used by the picker's own manual-refresh binding. No-op outside `pick-domain`. */
+  refreshDomainOptions: () => void
   /**
    * Steps back exactly one level in the resolution chain this context built
    * up, returning `true` if it did. Returns `false` when there is no earlier
@@ -151,6 +153,15 @@ export function useDomainContext(initialDomain: string | undefined, initialAccou
       .catch((err) => setPhase({ kind: 'error', message: toOvhtoolError(err).message }))
   }
 
+  function refreshDomainOptions(): void {
+    if (phase.kind !== 'pick-domain') return
+    const previous = phase.previous
+    setPhase({ kind: 'listing-domains', previous })
+    openDomainPicker(previous)
+      .then(setPhase)
+      .catch((err) => setPhase({ kind: 'error', message: toOvhtoolError(err).message, previous }))
+  }
+
   function goBack(): boolean {
     const previous = 'previous' in phase ? phase.previous : undefined
     if (!previous) return false
@@ -158,5 +169,5 @@ export function useDomainContext(initialDomain: string | undefined, initialAccou
     return true
   }
 
-  return { phase, pickDomain, chooseCandidate, revealDomainPicker, goBack }
+  return { phase, pickDomain, chooseCandidate, revealDomainPicker, refreshDomainOptions, goBack }
 }

@@ -143,6 +143,7 @@ export function AccountsScreen({ initialPanel, onHome }: AccountsScreenProps) {
     { ctrl: 'n', label: 'new account', when: activeTable === 'profiles' && panel === null, onTrigger: () => setPanel('auth') },
     { ctrl: 'x', label: 'clear cache', when: panel === null, onTrigger: clearCache },
     { ctrl: 'y', label: 'copy', when: panel === null, onTrigger: () => void copyMarkdown() },
+    { ctrl: 'r', label: 'refresh', when: panel === null, onTrigger: reload },
     { key: 'tab', label: 'switch table', when: panel === null, onTrigger: () => setActiveTable((t) => (t === 'profiles' ? 'cache' : 'profiles')) },
     {
       key: 'escape',

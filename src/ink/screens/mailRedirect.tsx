@@ -153,6 +153,7 @@ function MailRedirectDashboard({
       { key: 'delete', label: 'delete', when: Boolean(selected) && panel === null, onTrigger: openDelete },
       { ctrl: 'n', label: 'add', when: panel === null, onTrigger: () => setPanel('add') },
       { ctrl: 'y', label: 'copy', when: panel === null, onTrigger: () => void copyMarkdown() },
+      { ctrl: 'r', label: 'refresh', when: panel === null, onTrigger: reload },
       {
         key: 'escape',
         label: 'back',
