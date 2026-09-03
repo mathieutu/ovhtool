@@ -1,5 +1,20 @@
 # Changelog
 
+<a name="0.4.0"></a>
+## 0.4.0 (2026-09-03)
+
+### Added
+
+- ✨ Attach a monospace HTML/RTF flavor to clipboard copies [[9dbf804](https://github.com/mathieutu/ovhtool/commit/9dbf80402d2d2d256ab1dd77e1ebce7394e5f476)]
+- ✨ Add visual borders to the interactive table [[bc8f187](https://github.com/mathieutu/ovhtool/commit/bc8f187c8972d1d9874397f9a46f85496bd4498f)]
+- ✨ Hide domain picker duplicates for accounts not pinned in domain→account cache [[14ee15e](https://github.com/mathieutu/ovhtool/commit/14ee15e46df57723276e1c8ccd51337d03efb904)]
+
+### Fixed
+
+- 🐛 Break table sort ties on later columns instead of API response order [[943ba1e](https://github.com/mathieutu/ovhtool/commit/943ba1ed6dba57321f9ec7bb3cdf54583f702ba5)]
+- 🐛 Reconcile add/edit/delete against OVH&#x27;s lagging listing endpoints [[4f515f2](https://github.com/mathieutu/ovhtool/commit/4f515f2dc74d42d27c02e5ed71176442d06a92cc)]
+
+
 <a name="0.3.0"></a>
 ## 0.3.0 (2026-09-03)
 

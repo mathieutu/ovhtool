@@ -1,6 +1,6 @@
 {
   "name": "ovhtool",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "CLI to manage DNS zones, mail accounts and email redirections across several OVH accounts",
   "keywords": [
     "ovh",
