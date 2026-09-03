@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -119,6 +119,34 @@ test('sortRowsByColumn does not mutate the original array', () => {
   const original = [...rows]
   sortRowsByColumn(rows, (r) => r.email)
   assert.deepEqual(rows, original)
+})
+
+test('applyPendingOverrides drops a row marked "deleted" even if the fetch still lists it', () => {
+  const fresh = [{ id: 1, name: 'a' }, { id: 2, name: 'b' }]
+  const pending = new Map([[1, 'deleted' as const]])
+  assert.deepEqual(applyPendingOverrides(fresh, pending, (r) => r.id), [{ id: 2, name: 'b' }])
+})
+
+test('applyPendingOverrides replaces a row with its known-correct value even if the fetch still lists the stale one', () => {
+  const fresh = [{ id: 1, name: 'stale' }]
+  const pending = new Map([[1, { id: 1, name: 'fresh' }]])
+  assert.deepEqual(applyPendingOverrides(fresh, pending, (r) => r.id), [{ id: 1, name: 'fresh' }])
+})
+
+test('applyPendingOverrides appends a known-added row the fetch has not picked up yet', () => {
+  const fresh = [{ id: 1, name: 'a' }]
+  const pending = new Map([[2, { id: 2, name: 'b' }]])
+  assert.deepEqual(applyPendingOverrides(fresh, pending, (r) => r.id), [{ id: 1, name: 'a' }, { id: 2, name: 'b' }])
+})
+
+test('applyPendingOverrides leaves rows untouched once the fetch reflects a pending change', () => {
+  const fresh = [{ id: 1, name: 'fresh' }]
+  const pending = new Map([[1, { id: 1, name: 'fresh' }]])
+  assert.deepEqual(applyPendingOverrides(fresh, pending, (r) => r.id), [{ id: 1, name: 'fresh' }])
+})
+
+test('applyPendingOverrides is a no-op with an empty pending map', () => {
+  assert.deepEqual(applyPendingOverrides(rows, new Map(), (r) => r.email), rows)
 })
 
 test('sortRowsByColumn is stable for equal values', () => {

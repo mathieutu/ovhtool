@@ -50,6 +50,28 @@ export function visibleRows<T>(rows: T[], filter: string | undefined, searchFiel
   return sortKey ? sortRowsByColumn(filtered, sortKey) : filtered
 }
 
+/**
+ * Reconciles a freshly fetched row list with mutations the app already knows
+ * succeeded but the server's own listing endpoint hasn't caught up with yet
+ * (OVH's list/get endpoints can echo a just-applied add/edit/delete for a
+ * beat) — `pending` maps a row id to either its known-correct replacement or
+ * `'deleted'`. A row present in `pending` is replaced/dropped regardless of
+ * what `rows` says; a pending row absent from `rows` (an add the listing
+ * hasn't picked up yet) is appended.
+ */
+export function applyPendingOverrides<T, K>(rows: T[], pending: Map<K, T | 'deleted'>, idOf: (row: T) => K): T[] {
+  const seen = new Set<K>()
+  const reconciled = rows.flatMap((row) => {
+    const id = idOf(row)
+    seen.add(id)
+    const override = pending.get(id)
+    if (override === 'deleted') return []
+    return [override ?? row]
+  })
+  const added = [...pending].filter(([id, value]) => value !== 'deleted' && !seen.has(id)).map(([, value]) => value as T)
+  return [...reconciled, ...added]
+}
+
 /** Full domain name for a record (e.g. "www.example.com", or "example.com" for the root). */
 export function fullDomain(zone: string, subDomain: string): string {
   return subDomain && subDomain !== '@' ? `${subDomain}.${zone}` : zone

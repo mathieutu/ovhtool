@@ -1,6 +1,7 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, type ActionDiff } from '../diff.ts'
 import { waitUntilReflected, explainConflict } from './pollUntil.ts'
+import { ApiError } from '../errors.ts'
 
 export type MailRedirection = {
   id: string
@@ -32,18 +33,26 @@ export function prepareAddMailRedirection(params: AddMailRedirectionParams): Act
 }
 
 export async function applyAddMailRedirection(client: OvhClient, params: AddMailRedirectionParams): Promise<MailRedirection> {
-  const redirection = await explainConflict(() =>
-    client.request<MailRedirection>('POST', `/email/domain/${params.domain}/redirection`, {
+  // OVH's POST here kicks off an async task and responds with *that task*
+  // (an `{ id, action, type, … }` shape), not the redirection — the
+  // redirection's own id only shows up once the listing catches up, so it's
+  // found by diffing the id list rather than trusted from the POST response.
+  const idsBefore = await client.request<string[]>('GET', `/email/domain/${params.domain}/redirection`)
+  await explainConflict(() =>
+    client.request('POST', `/email/domain/${params.domain}/redirection`, {
       from: params.from,
       to: params.to,
       localCopy: false,
     }),
   )
+  let createdId: string | undefined
   await waitUntilReflected(async () => {
     const ids = await client.request<string[]>('GET', `/email/domain/${params.domain}/redirection`)
-    return ids.includes(redirection.id)
+    createdId = ids.find((id) => !idsBefore.includes(id))
+    return createdId !== undefined
   })
-  return redirection
+  if (!createdId) throw new ApiError(`Redirection for ${params.from} was created but OVH hasn't listed it yet — check "mail-redirect list" shortly.`, 'ovh_not_yet_listed')
+  return fetchMailRedirection(client, params.domain, createdId)
 }
 
 export function prepareRemoveMailRedirection(before: MailRedirection): ActionDiff {

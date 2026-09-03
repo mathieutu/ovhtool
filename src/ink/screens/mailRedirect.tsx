@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { toMarkdownTable, ensureEmailDomain } from '../../cliPure.ts'
+import { toMarkdownTable, ensureEmailDomain, applyPendingOverrides } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -89,7 +89,16 @@ function MailRedirectDashboard({
   onRevealPicker: () => void
 }) {
   const client = useMemo(() => createOvhClient(profile), [profile])
-  const { status, data, error: loadError, revalidating, reload } = useAsyncData(async () => listMailRedirections(client, domain), [client, domain], `mailRedirect:${accountName}:${domain}`)
+  // OVH's listing endpoint can echo a just-applied add/delete for a beat, so
+  // a `reload()` right after one could undo what the app already knows
+  // happened — every confirmed mutation is recorded here and reconciled into
+  // whatever the next fetch returns (applyPendingOverrides).
+  const pendingRef = useRef(new Map<string, MailRedirection | 'deleted'>())
+  const { status, data, error: loadError, revalidating, reload, mutate } = useAsyncData(
+    async () => applyPendingOverrides(await listMailRedirections(client, domain), pendingRef.current, (r) => r.id),
+    [client, domain],
+    `mailRedirect:${accountName}:${domain}`,
+  )
   const redirections = data ?? []
 
   const columns: TableColumn<MailRedirection>[] = [
@@ -125,6 +134,14 @@ function MailRedirectDashboard({
     setPanel(null)
     setPanelRedirection(null)
     setPanelError(undefined)
+  }
+
+  function onMutationDone(message: string, id: string, change: MailRedirection | 'deleted') {
+    pendingRef.current.set(id, change)
+    closePanel()
+    mutate((current) => (current ? applyPendingOverrides(current, new Map([[id, change]]), (r) => r.id) : current))
+    reload()
+    setStatusMessage(message)
   }
 
   function openDelete() {
@@ -184,9 +201,17 @@ function MailRedirectDashboard({
           emptyLabel="No redirection."
         />
       ) : panel === 'add' ? (
-        <AddRedirectionPanel domain={domain} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <AddRedirectionPanel domain={domain} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message, created) => onMutationDone(message, created.id, created)} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : panel === 'delete' && panelRedirection ? (
-        <DeleteRedirectionPanel domain={domain} redirection={panelRedirection} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <DeleteRedirectionPanel
+          domain={domain}
+          redirection={panelRedirection}
+          client={client}
+          onDone={(message) => onMutationDone(message, panelRedirection.id, 'deleted')}
+          onCancel={closePanel}
+          onError={setPanelError}
+          error={panelError}
+        />
       ) : (
         <Spinner label="Loading…" />
       )}
@@ -203,7 +228,7 @@ type MutationPanelProps = {
   error?: string | undefined
 }
 
-function AddRedirectionPanel({ domain, initialValues, client, onDone, onError, error }: MutationPanelProps & { initialValues?: Record<string, string | undefined> }) {
+function AddRedirectionPanel({ domain, initialValues, client, onDone, onError, error }: Omit<MutationPanelProps, 'onDone'> & { onDone: (message: string, created: MailRedirection) => void; initialValues?: Record<string, string | undefined> }) {
   const [from, setFrom] = useState(initialValues?.from ?? '')
   const [to, setTo] = useState(initialValues?.to ?? '')
   const [diff, setDiff] = useState<ActionDiff | null>(null)
@@ -227,8 +252,8 @@ function AddRedirectionPanel({ domain, initialValues, client, onDone, onError, e
     if (!client) return
     setApplying(true)
     try {
-      await applyAddMailRedirection(client, { domain, from: ensureEmailDomain(from, domain), to })
-      onDone('✔ Redirection added')
+      const created = await applyAddMailRedirection(client, { domain, from: ensureEmailDomain(from, domain), to })
+      onDone('✔ Redirection added', created)
     } catch (err) {
       setApplying(false)
       onError(toOvhtoolError(err).message)

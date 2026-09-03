@@ -1,6 +1,7 @@
 import type { OvhClient } from '../ovhClient.ts'
 import { diffCreate, diffDelete, type ActionDiff } from '../diff.ts'
-import { explainConflict } from './pollUntil.ts'
+import { explainConflict, waitUntilReflected } from './pollUntil.ts'
+import { ApiError } from '../errors.ts'
 
 export type MailAccount = {
   accountName: string
@@ -45,14 +46,27 @@ export function prepareCreateMailAccount(params: CreateMailAccountParams): Actio
 }
 
 export async function applyCreateMailAccount(client: OvhClient, params: CreateMailAccountParams): Promise<MailAccount> {
-  return explainConflict(() =>
-    client.request<MailAccount>('POST', `/email/domain/${params.domain}/account`, {
+  // Like mail-redirect's create, OVH's POST here kicks off an async
+  // provisioning task and its response shouldn't be trusted as the account —
+  // `accountName` is caller-supplied (not server-assigned) though, so the
+  // real account can just be fetched back once OVH lists it.
+  await explainConflict(() =>
+    client.request('POST', `/email/domain/${params.domain}/account`, {
       accountName: params.accountName,
       password: params.password,
       size: params.size,
       description: params.description,
     }),
   )
+  let created: MailAccount | undefined
+  await waitUntilReflected(async () => {
+    const accountNames = await client.request<string[]>('GET', `/email/domain/${params.domain}/account`)
+    if (!accountNames.includes(params.accountName)) return false
+    created = await fetchMailAccount(client, params.domain, params.accountName)
+    return true
+  })
+  if (!created) throw new ApiError(`Account ${params.accountName} was created but OVH hasn't listed it yet — check "mail list" shortly.`, 'ovh_not_yet_listed')
+  return created
 }
 
 export function prepareDeleteMailAccount(before: MailAccount): ActionDiff {

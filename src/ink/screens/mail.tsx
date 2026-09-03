@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { toMarkdownTable, stripEmailDomain } from '../../cliPure.ts'
+import { toMarkdownTable, stripEmailDomain, applyPendingOverrides } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -91,7 +91,16 @@ function MailDashboard({
   onRevealPicker: () => void
 }) {
   const client = useMemo(() => createOvhClient(profile), [profile])
-  const { status, data, error: loadError, revalidating, reload } = useAsyncData(async () => listMailAccounts(client, domain), [client, domain], `mail:${accountName}:${domain}`)
+  // OVH's listing endpoint can echo a just-applied add/delete for a beat, so
+  // a `reload()` right after one could undo what the app already knows
+  // happened — every confirmed mutation is recorded here and reconciled into
+  // whatever the next fetch returns (applyPendingOverrides).
+  const pendingRef = useRef(new Map<string, MailAccount | 'deleted'>())
+  const { status, data, error: loadError, revalidating, reload, mutate } = useAsyncData(
+    async () => applyPendingOverrides(await listMailAccounts(client, domain), pendingRef.current, (a) => a.accountName),
+    [client, domain],
+    `mail:${accountName}:${domain}`,
+  )
   const accounts = data ?? []
 
   const columns: TableColumn<MailAccount>[] = [
@@ -128,6 +137,14 @@ function MailDashboard({
     setPanel(null)
     setPanelAccount(null)
     setPanelError(undefined)
+  }
+
+  function onMutationDone(message: string, accountName: string, change: MailAccount | 'deleted') {
+    pendingRef.current.set(accountName, change)
+    closePanel()
+    mutate((current) => (current ? applyPendingOverrides(current, new Map([[accountName, change]]), (a) => a.accountName) : current))
+    reload()
+    setStatusMessage(message)
   }
 
   function openEdit() {
@@ -192,11 +209,19 @@ function MailDashboard({
           emptyLabel="No mail account."
         />
       ) : panel === 'add' ? (
-        <CreateMailPanel domain={domain} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <CreateMailPanel domain={domain} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message, created) => onMutationDone(message, created.accountName, created)} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : panel === 'edit' && panelAccount ? (
         <PasswdMailPanel domain={domain} account={panelAccount} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : panel === 'delete' && panelAccount ? (
-        <DeleteMailPanel domain={domain} account={panelAccount} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <DeleteMailPanel
+          domain={domain}
+          account={panelAccount}
+          client={client}
+          onDone={(message) => onMutationDone(message, panelAccount.accountName, 'deleted')}
+          onCancel={closePanel}
+          onError={setPanelError}
+          error={panelError}
+        />
       ) : (
         <Spinner label="Loading…" />
       )}
@@ -213,7 +238,7 @@ type MutationPanelProps = {
   error?: string | undefined
 }
 
-function CreateMailPanel({ domain, initialValues, client, onDone, onError, error }: MutationPanelProps & { initialValues?: Record<string, string | undefined> }) {
+function CreateMailPanel({ domain, initialValues, client, onDone, onError, error }: Omit<MutationPanelProps, 'onDone'> & { onDone: (message: string, created: MailAccount) => void; initialValues?: Record<string, string | undefined> }) {
   const [accountName, setAccountName] = useState(initialValues?.accountName ?? '')
   const [password, setPassword] = useState('')
   const [size, setSize] = useState(initialValues?.size ?? '')
@@ -245,8 +270,8 @@ function CreateMailPanel({ domain, initialValues, client, onDone, onError, error
     if (!client) return
     setApplying(true)
     try {
-      await applyCreateMailAccount(client, { domain, accountName: stripEmailDomain(accountName, domain), password, size: size ? parseInt(size, 10) : undefined, description: description || undefined })
-      onDone('✔ Mail account created')
+      const created = await applyCreateMailAccount(client, { domain, accountName: stripEmailDomain(accountName, domain), password, size: size ? parseInt(size, 10) : undefined, description: description || undefined })
+      onDone('✔ Mail account created', created)
     } catch (err) {
       setApplying(false)
       onError(toOvhtoolError(err).message)

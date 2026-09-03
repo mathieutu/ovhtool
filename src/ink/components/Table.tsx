@@ -88,6 +88,10 @@ export function Table<T>({ columns, rows, searchFields, filter, onFilterChange, 
   const filtered = visibleTableRows(rows, columns, filter, searchFields)
   const clampedIndex = filtered.length === 0 ? -1 : Math.min(selectedIndex, filtered.length - 1)
 
+  useEffect(() => {
+    if (clampedIndex !== selectedIndex && clampedIndex >= 0) onSelectedIndexChange(clampedIndex)
+  }, [clampedIndex, selectedIndex, onSelectedIndexChange])
+
   useInput(
     (_input, key) => {
       if (key.upArrow) onSelectedIndexChange(Math.max(0, clampedIndex - 1))

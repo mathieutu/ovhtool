@@ -14,7 +14,7 @@ import { DomainContextGate } from '../components/DomainContextGate.tsx'
 import { useKeymap } from '../hooks/useKeymap.ts'
 import { useAsyncData } from '../hooks/useAsyncData.ts'
 import { useDomainContext } from '../hooks/useDomainContext.ts'
-import { fullDomain, toMarkdownTable, stripDomainSuffix } from '../../cliPure.ts'
+import { fullDomain, toMarkdownTable, stripDomainSuffix, applyPendingOverrides } from '../../cliPure.ts'
 import { type Profile } from '../../config.ts'
 import { createOvhClient } from '../../ovhClient.ts'
 import { copyToClipboard } from '../../clipboard.ts'
@@ -93,7 +93,16 @@ function DnsDashboard({
   onRevealPicker: () => void
 }) {
   const client = useMemo(() => createOvhClient(profile), [profile])
-  const { status, data, error: loadError, revalidating, reload } = useAsyncData(async () => listDnsRecords(client, zone), [client, zone], `dns:${accountName}:${zone}`)
+  // OVH's record-listing endpoint can echo a just-applied add/edit/delete for
+  // a beat, so a `reload()` right after one could undo what the app already
+  // knows happened — every confirmed mutation is recorded here and
+  // reconciled into whatever the next fetch returns (applyPendingOverrides).
+  const pendingRef = useRef(new Map<number, DnsRecord | 'deleted'>())
+  const { status, data, error: loadError, revalidating, reload, mutate } = useAsyncData(
+    async () => applyPendingOverrides(await listDnsRecords(client, zone), pendingRef.current, (r) => r.id),
+    [client, zone],
+    `dns:${accountName}:${zone}`,
+  )
   const records = data ?? []
 
   const columns: TableColumn<DnsRecord>[] = [
@@ -136,6 +145,14 @@ function DnsDashboard({
     setPanel(null)
     setPanelRecord(null)
     setPanelError(undefined)
+  }
+
+  function onMutationDone(message: string, id: number, change: DnsRecord | 'deleted') {
+    pendingRef.current.set(id, change)
+    closePanel()
+    mutate((current) => (current ? applyPendingOverrides(current, new Map([[id, change]]), (r) => r.id) : current))
+    reload()
+    setStatusMessage(message)
   }
 
   function openEdit() {
@@ -198,11 +215,11 @@ function DnsDashboard({
           emptyLabel="No record."
         />
       ) : panel === 'add' ? (
-        <AddDnsPanel zone={zone} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <AddDnsPanel zone={zone} initialValues={initialPanel?.kind === 'add' ? initialPanel.values : undefined} client={client} onDone={(message, created) => onMutationDone(message, created.id, created)} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : panel === 'edit' && panelRecord ? (
-        <EditDnsPanel zone={zone} record={panelRecord} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <EditDnsPanel zone={zone} record={panelRecord} client={client} onDone={(message, updated) => onMutationDone(message, updated.id, updated)} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : panel === 'delete' && panelRecord ? (
-        <DeleteDnsPanel zone={zone} record={panelRecord} client={client} onDone={(message) => { closePanel(); reload(); setStatusMessage(message) }} onCancel={closePanel} onError={setPanelError} error={panelError} />
+        <DeleteDnsPanel zone={zone} record={panelRecord} client={client} onDone={(message) => onMutationDone(message, panelRecord.id, 'deleted')} onCancel={closePanel} onError={setPanelError} error={panelError} />
       ) : (
         <Spinner label="Loading…" />
       )}
@@ -213,13 +230,15 @@ function DnsDashboard({
 type MutationPanelProps = {
   zone: string
   client: ReturnType<typeof createOvhClient>
-  onDone: (message: string) => void
   onCancel: () => void
   onError: (message: string | undefined) => void
   error?: string | undefined
 }
 
-function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: MutationPanelProps & { initialValues?: Record<string, string | undefined> }) {
+/** `record` carries the resulting row, so the caller can apply it locally instead of trusting the next fetch to reflect it. */
+type AddOrEditPanelProps = MutationPanelProps & { onDone: (message: string, record: DnsRecord) => void }
+
+function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: AddOrEditPanelProps & { initialValues?: Record<string, string | undefined> }) {
   const [subDomain, setSubDomain] = useState(initialValues?.subdomain ?? '')
   const [target, setTarget] = useState(initialValues?.value ?? '')
   const [fieldType, setFieldType] = useState(initialValues?.type && isValidRecordType(initialValues.type) ? initialValues.type : DNS_RECORD_TYPES[0])
@@ -247,8 +266,8 @@ function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: Mu
     if (!client) return
     setApplying(true)
     try {
-      await applyAddDnsRecord(client, { zone, subDomain: stripDomainSuffix(subDomain, zone), target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined })
-      onDone('✔ Record added')
+      const created = await applyAddDnsRecord(client, { zone, subDomain: stripDomainSuffix(subDomain, zone), target, fieldType, ttl: ttl ? parseInt(ttl, 10) : undefined })
+      onDone('✔ Record added', created)
     } catch (err) {
       setApplying(false)
       onError(toOvhtoolError(err).message)
@@ -275,7 +294,7 @@ function AddDnsPanel({ zone, initialValues, client, onDone, onError, error }: Mu
   )
 }
 
-function EditDnsPanel({ zone, record, client, onDone, onError, error }: MutationPanelProps & { record: DnsRecord }) {
+function EditDnsPanel({ zone, record, client, onDone, onError, error }: AddOrEditPanelProps & { record: DnsRecord }) {
   const [subDomain, setSubDomain] = useState(record.subDomain)
   const [target, setTarget] = useState(record.target)
   const [ttl, setTtl] = useState(String(record.ttl))
@@ -297,8 +316,9 @@ function EditDnsPanel({ zone, record, client, onDone, onError, error }: Mutation
     if (!client) return
     setApplying(true)
     try {
-      await applyUpdateDnsRecord(client, { zone, id: record.id, subDomain: stripDomainSuffix(subDomain, zone), target, ttl: ttl ? parseInt(ttl, 10) : undefined })
-      onDone('✔ Record updated')
+      const params = { zone, id: record.id, subDomain: stripDomainSuffix(subDomain, zone), target, ttl: ttl ? parseInt(ttl, 10) : undefined }
+      await applyUpdateDnsRecord(client, params)
+      onDone('✔ Record updated', { ...record, subDomain: params.subDomain, target: params.target, ttl: params.ttl ?? record.ttl })
     } catch (err) {
       setApplying(false)
       onError(toOvhtoolError(err).message)
@@ -325,7 +345,7 @@ function EditDnsPanel({ zone, record, client, onDone, onError, error }: Mutation
   )
 }
 
-function DeleteDnsPanel({ zone, record, client, onDone, onCancel, onError, error }: MutationPanelProps & { record: DnsRecord }) {
+function DeleteDnsPanel({ zone, record, client, onDone, onCancel, onError, error }: MutationPanelProps & { record: DnsRecord; onDone: (message: string) => void }) {
   const [applying, setApplying] = useState(false)
   const diff = prepareDeleteDnsRecord(record)
 

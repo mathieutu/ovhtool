@@ -8,6 +8,14 @@ export type AsyncDataState<T> = {
   /** True while fetching fresh data behind already-displayed (cached) data — show a subtle indicator, never a blocking spinner. */
   revalidating: boolean
   reload: () => void
+  /**
+   * Patches the displayed data in place, without waiting for a fetch.
+   * OVH's record-listing endpoints can lag a moment behind a just-applied
+   * write (a `reload()` right after a delete/create may still echo the old
+   * list), so a mutation that already succeeded should update what's on
+   * screen immediately instead of trusting the next fetch to reflect it.
+   */
+  mutate: (updater: (data: T | null) => T | null) => void
 }
 
 /**
@@ -52,5 +60,9 @@ export function useAsyncData<T>(fetcher: () => Promise<T>, deps: unknown[] = [],
     load()
   }, [load])
 
-  return { ...state, revalidating, reload: load }
+  const mutate = useCallback((updater: (data: T | null) => T | null) => {
+    setState((s) => ({ ...s, data: updater(s.data) }))
+  }, [])
+
+  return { ...state, revalidating, reload: load, mutate }
 }
