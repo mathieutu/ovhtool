@@ -84,12 +84,21 @@ const MIN_VISIBLE_ROWS = 3
 const SEPARATOR = '┃'
 const COLUMN_GAP = ` ${SEPARATOR} `
 
-/** Renders `cells` with `COLUMN_GAP`'s separator between them, dimmed unless `dimSeparator` is false (see `SEPARATOR`'s doc comment). */
-function joinWithSeparator(cells: string[], dimSeparator: boolean): React.ReactNode {
+/**
+ * Renders `cells` with `COLUMN_GAP`'s separator between them, dimmed unless
+ * `dimSeparator` is false (see `SEPARATOR`'s doc comment). When `bold` is
+ * set, each cell is wrapped in its own `<Text bold>` rather than relying on
+ * an ancestor `<Text bold>` around the whole row: Ink/chalk's dim and bold
+ * share the same ANSI reset code (22), so a dimmed separator between two
+ * cells would otherwise cancel the *ancestor's* bold for every cell after
+ * the first — this bit us in the header row, where only the very first
+ * column ended up looking bold.
+ */
+function joinWithSeparator(cells: string[], dimSeparator: boolean, bold = false): React.ReactNode {
   return cells.map((cell, i) => (
     <React.Fragment key={i}>
       {i > 0 && <Text dimColor={dimSeparator}>{COLUMN_GAP}</Text>}
-      {cell}
+      {bold ? <Text bold>{cell}</Text> : cell}
     </React.Fragment>
   ))
 }
@@ -160,7 +169,7 @@ export function Table<T>({ columns, rows, searchFields, filter, onFilterChange, 
         <TextInput value={filter} onChange={onFilterChange} isDisabled={!isActive} placeholder="(type to filter, or column:term)" />
       </Box>
       <Box marginTop={1} flexDirection="column">
-        <Text bold>{joinWithSeparator(headerCells, true)}</Text>
+        <Text>{joinWithSeparator(headerCells, true, true)}</Text>
         <Text dimColor>{headerRule}</Text>
       </Box>
       {filtered.length === 0 ? (

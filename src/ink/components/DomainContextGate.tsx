@@ -36,7 +36,11 @@ export function DomainContextGate({ domainLabel, domainContext, onHome }: Domain
     { header: 'account', render: (o) => o.account, width: 16 },
     { header: domainLabel, render: (o) => o.domain, width: null },
   ]
-  const searchFields = (o: DomainOption) => [o.account, o.domain]
+  // "account" deliberately left out of the default search — same domain
+  // reachable from several accounts would otherwise surface duplicate-looking
+  // rows on an account-name match; still reachable explicitly via
+  // "account:<name>" (the column-targeted filter syntax).
+  const searchFields = (o: DomainOption) => [o.domain]
 
   const options = phase.kind === 'pick-domain' ? phase.options : []
   const filtered = visibleTableRows(options, columns, filter, searchFields)
