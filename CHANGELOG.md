@@ -1,5 +1,21 @@
 # Changelog
 
+<a name="0.5.0"></a>
+## 0.5.0 (2026-09-13)
+
+### Added
+
+- ✨ Add Option/Alt+Backspace word delete to text inputs [[2762392](https://github.com/mathieutu/ovhtool/commit/27623927da554b2ef57b4a436f366d138cf106f7)]
+- ✨ Add standard cursor navigation to every text input [[a6e82da](https://github.com/mathieutu/ovhtool/commit/a6e82da2ee8ecb2af1d0918382f4894a8a9ed809)]
+- ✨ Support column:term syntax in every table filter [[518fe05](https://github.com/mathieutu/ovhtool/commit/518fe05d7a473782061af99368cc7aebb9b01e3c)]
+- ✨ Merge mail accounts and redirections into one searchable screen [[58031a8](https://github.com/mathieutu/ovhtool/commit/58031a865b65ddf9d163ec7149b1128546b1c169)]
+
+### Fixed
+
+- 🐛 Exclude account from the domain picker&#x27;s default search, fix header bold [[cc2947b](https://github.com/mathieutu/ovhtool/commit/cc2947bd67bb9ef8c293843cfbcb9eb4974fb9d8)]
+- 🐛 Treat &quot;:&quot;, &quot;.&quot;, &quot;-&quot; and &quot;@&quot; as word boundaries in text-input word navigation [[b00d599](https://github.com/mathieutu/ovhtool/commit/b00d599c3e4cc05d06876f0b17b249a1a6327925)]
+
+
 <a name="0.4.0"></a>
 ## 0.4.0 (2026-09-03)
 
