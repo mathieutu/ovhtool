@@ -19,7 +19,8 @@ export type TextInputProps = {
  * move the cursor one character, Option/Alt+←/→ jump a whole word (a
  * terminal encodes that either as an arrow with the Alt modifier or as the
  * classic Esc+b/Esc+f, so both are handled), Home/End jump to the line's
- * edges. Still only reacts to printable characters, Backspace, these
+ * edges, Option/Alt+Backspace (sent as Esc+Backspace/Esc+DEL) deletes the
+ * word behind the cursor. Still only reacts to printable characters, Backspace, these
  * navigation keys, and Enter when `onSubmit` is given — never Delete
  * (reserved globally for row deletion), Tab, ↑/↓ or Ctrl+letter combos, so
  * it can stay mounted permanently (e.g. as the `Table` filter, ADR-0006)
@@ -58,6 +59,12 @@ export function TextInput({ value, onChange, onSubmit, isDisabled = false, place
       }
       if (key.end) {
         setCursor(value.length)
+        return
+      }
+      if (key.backspace && key.meta) {
+        const start = wordBoundaryBefore(value, at)
+        onChange(value.slice(0, start) + value.slice(at))
+        setCursor(start)
         return
       }
       if (key.backspace) {
