@@ -322,3 +322,18 @@ test('wordBoundaryAfter skips leading whitespace before jumping over the word', 
 test('wordBoundaryAfter stops at the end of the string', () => {
   assert.equal(wordBoundaryAfter('hello', 5), 5)
 })
+
+test('wordBoundaryAfter treats ":", ".", "-" and "@" as boundaries, stopping at each label of an email address instead of crossing it in one hop', () => {
+  const filter = 'to:jean.dupont-x@example.com'
+  assert.equal(wordBoundaryAfter(filter, 0), 2) // "to" stops right before ":"
+  assert.equal(wordBoundaryAfter(filter, 2), 7) // jumps over ":" then across "jean", stopping at "."
+  assert.equal(wordBoundaryAfter(filter, 7), 14) // over "." then "dupont", stopping at "-"
+  assert.equal(wordBoundaryAfter(filter, 14), 16) // over "-" then "x", stopping at "@"
+})
+
+test('wordBoundaryBefore mirrors wordBoundaryAfter backwards through the same address', () => {
+  const filter = 'to:jean.dupont-x@example.com'
+  assert.equal(wordBoundaryBefore(filter, filter.length), 25) // jumping back from the end stops right after "."
+  assert.equal(wordBoundaryBefore(filter, 25), 17) // over "." then "example", stopping right after "@"
+  assert.equal(wordBoundaryBefore(filter, 17), 15) // over "@" then "x", stopping right after "-"
+})
