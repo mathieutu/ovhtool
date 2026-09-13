@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides, naturalColumnWidth } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides, naturalColumnWidth, parseColumnFilter } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -28,6 +28,35 @@ test('filterRows matches case-insensitively across any searched field', () => {
 
 test('filterRows returns an empty array when nothing matches', () => {
   assert.deepEqual(filterRows(rows, 'nope', (r) => [r.name, r.email]), [])
+})
+
+const rowColumns = [
+  { header: 'name', render: (r: Row) => r.name },
+  { header: 'email', render: (r: Row) => r.email },
+]
+
+test('parseColumnFilter targets a single column by header prefix', () => {
+  const parsed = parseColumnFilter('email:bar.fr', rowColumns)
+  assert.equal(parsed?.column.header, 'email')
+  assert.equal(parsed?.term, 'bar.fr')
+})
+
+test('parseColumnFilter matches an unambiguous abbreviation of the header', () => {
+  assert.equal(parseColumnFilter('n:admin', rowColumns)?.column.header, 'name')
+})
+
+test('parseColumnFilter returns null without a ":", leaving the caller to search every field', () => {
+  assert.equal(parseColumnFilter('admin', rowColumns), null)
+})
+
+test('parseColumnFilter returns null when the prefix matches no header or more than one, instead of surprising the user with an empty table over a typo', () => {
+  assert.equal(parseColumnFilter('bogus:admin', rowColumns), null)
+  assert.equal(parseColumnFilter(':admin', rowColumns), null)
+  const ambiguousColumns = [
+    { header: 'name', render: (r: Row) => r.name },
+    { header: 'note', render: (r: Row) => r.name },
+  ]
+  assert.equal(parseColumnFilter('n:admin', ambiguousColumns), null)
 })
 
 test('toMarkdownTable pads every column to its widest cell, header included', () => {

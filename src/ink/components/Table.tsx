@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
-import { fitColumnWidths, truncatePad, computeScrollWindow, hyperlink, visibleRows, naturalColumnWidth } from '../../cliPure.ts'
+import { fitColumnWidths, truncatePad, computeScrollWindow, hyperlink, visibleRows, naturalColumnWidth, parseColumnFilter } from '../../cliPure.ts'
 import { TextInput } from './primitives/TextInput.tsx'
 import { useTheme } from '../theme.ts'
 
@@ -21,9 +21,17 @@ export type TableColumn<T> = {
  * `Table` renders — computing it separately (e.g. filtering without
  * sorting) would desync `selectedIndex` from the row actually highlighted
  * on screen.
+ *
+ * `filter` also accepts a `column:term` prefix (see `parseColumnFilter`) to
+ * search a single column instead of every field — handy once a row mixes
+ * unrelated kinds of data (e.g. the `email` screen's accounts + redirections)
+ * and a bare term would otherwise match more loosely than intended.
  */
 export function visibleTableRows<T>(rows: T[], columns: TableColumn<T>[], filter: string, searchFields: (item: T) => (string | number)[]): T[] {
-  return visibleRows(rows, filter, searchFields, columns.slice(1).map((column) => column.render))
+  const columnFilter = parseColumnFilter(filter, columns)
+  const effectiveFilter = columnFilter ? columnFilter.term : filter
+  const effectiveSearchFields = columnFilter ? (row: T) => [columnFilter.column.render(row)] : searchFields
+  return visibleRows(rows, effectiveFilter, effectiveSearchFields, columns.slice(1).map((column) => column.render))
 }
 
 export type TableProps<T> = {
@@ -149,7 +157,7 @@ export function Table<T>({ columns, rows, searchFields, filter, onFilterChange, 
     <Box flexDirection="column">
       <Box>
         <Text dimColor>Filter: </Text>
-        <TextInput value={filter} onChange={onFilterChange} isDisabled={!isActive} placeholder="(type to filter)" />
+        <TextInput value={filter} onChange={onFilterChange} isDisabled={!isActive} placeholder="(type to filter, or column:term)" />
       </Box>
       <Box marginTop={1} flexDirection="column">
         <Text bold>{joinWithSeparator(headerCells, true)}</Text>

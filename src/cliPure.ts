@@ -16,6 +16,26 @@ export function filterRows<T>(rows: T[], term: string | undefined, searchFields:
   return rows.filter((row) => searchFields(row).some((field) => String(field).toLowerCase().includes(needle)))
 }
 
+export type FilterableColumn<T> = { header: string; render: (row: T) => string }
+
+/**
+ * Splits a `column:term` filter (e.g. `to:gmail`, `type:redirect`) into the
+ * targeted column plus the remaining term to search within it — matching
+ * `column` against any column header by case-insensitive prefix, so `to:`
+ * and `t:` both reach a "To" column as long as it's unambiguous. Returns
+ * `null` when the filter has no `:` or its prefix doesn't match exactly one
+ * header, so the caller falls back to a plain search across every field
+ * instead of surprising the user with an empty table over a typo.
+ */
+export function parseColumnFilter<T>(filter: string, columns: FilterableColumn<T>[]): { column: FilterableColumn<T>; term: string } | null {
+  const separator = filter.indexOf(':')
+  if (separator === -1) return null
+  const key = filter.slice(0, separator).trim().toLowerCase()
+  if (!key) return null
+  const matches = columns.filter((c) => c.header.toLowerCase().startsWith(key))
+  return matches.length === 1 ? { column: matches[0]!, term: filter.slice(separator + 1) } : null
+}
+
 /**
  * Renders a header + rows as a Markdown table (`| col | col |` with a
  * `| --- | --- |` separator row), with every column padded to its widest
