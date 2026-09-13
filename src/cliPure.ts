@@ -198,6 +198,29 @@ export function truncatePad(text: string, width: number): string {
   return clipped.padEnd(width)
 }
 
+/**
+ * Cursor index one word back from `cursor` (Option/Alt+← in a standard
+ * terminal line editor, e.g. bash's readline): skip any whitespace
+ * immediately before the cursor, then skip back over the word itself.
+ */
+export function wordBoundaryBefore(value: string, cursor: number): number {
+  let i = cursor
+  while (i > 0 && /\s/.test(value[i - 1]!)) i--
+  while (i > 0 && !/\s/.test(value[i - 1]!)) i--
+  return i
+}
+
+/**
+ * Cursor index one word forward from `cursor` (Option/Alt+→): skip any
+ * whitespace right after the cursor, then skip over the word itself.
+ */
+export function wordBoundaryAfter(value: string, cursor: number): number {
+  let i = cursor
+  while (i < value.length && /\s/.test(value[i]!)) i++
+  while (i < value.length && !/\s/.test(value[i]!)) i++
+  return i
+}
+
 /** Current terminal width, falling back to a sane default when not a TTY (e.g. piped). */
 export function terminalWidth(): number {
   return process.stdout.columns && process.stdout.columns > 40 ? process.stdout.columns : 100

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides, naturalColumnWidth, parseColumnFilter } from '../src/cliPure.ts'
+import { filterRows, toMarkdownTable, fitColumnWidths, truncatePad, computeScrollWindow, sortRowsByColumn, visibleRows, stripDomainSuffix, stripEmailDomain, ensureEmailDomain, isPlausibleDomain, applyPendingOverrides, naturalColumnWidth, parseColumnFilter, wordBoundaryBefore, wordBoundaryAfter } from '../src/cliPure.ts'
 
 type Row = { name: string; email: string }
 
@@ -295,4 +295,30 @@ test('isPlausibleDomain accepts a dotted domain', () => {
 test('isPlausibleDomain rejects a bare word (likely a mistyped subcommand)', () => {
   assert.equal(isPlausibleDomain('redirections'), false)
   assert.equal(isPlausibleDomain('dns'), false)
+})
+
+test('wordBoundaryBefore skips back over the current word to its start', () => {
+  assert.equal(wordBoundaryBefore('hello world', 11), 6)
+  assert.equal(wordBoundaryBefore('hello world', 6), 0)
+})
+
+test('wordBoundaryBefore skips trailing whitespace before jumping over the word', () => {
+  assert.equal(wordBoundaryBefore('hello   world', 13), 8)
+})
+
+test('wordBoundaryBefore stops at the start of the string', () => {
+  assert.equal(wordBoundaryBefore('hello', 0), 0)
+})
+
+test('wordBoundaryAfter skips forward over the current word to its end', () => {
+  assert.equal(wordBoundaryAfter('hello world', 0), 5)
+  assert.equal(wordBoundaryAfter('hello world', 5), 11)
+})
+
+test('wordBoundaryAfter skips leading whitespace before jumping over the word', () => {
+  assert.equal(wordBoundaryAfter('hello   world', 5), 13)
+})
+
+test('wordBoundaryAfter stops at the end of the string', () => {
+  assert.equal(wordBoundaryAfter('hello', 5), 5)
 })
