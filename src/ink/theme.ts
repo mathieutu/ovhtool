@@ -13,8 +13,7 @@ export type Theme = { color: string; label: string }
 const SERVICE_THEMES: Record<ScreenName, Theme> = {
   home: { color: 'gray', label: 'ovhtool' },
   dns: { color: 'red', label: 'Domains' },
-  mail: { color: 'yellow', label: 'Mail Accounts' },
-  mailRedirect: { color: 'green', label: 'Mail Redirections' },
+  email: { color: 'yellow', label: 'Mail' },
   accounts: { color: 'cyan', label: 'Accounts' },
 }
 

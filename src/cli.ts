@@ -8,8 +8,7 @@ import { isPlausibleDomain } from './cliPure.ts'
 import * as agent from './agentActions.ts'
 import { App, ErrorBoundary, type AppProps, type ScreenName } from './ink/app.tsx'
 import type { DnsInitialPanel } from './ink/screens/dns.tsx'
-import type { MailInitialPanel } from './ink/screens/mail.tsx'
-import type { MailRedirectInitialPanel } from './ink/screens/mailRedirect.tsx'
+import type { EmailInitialPanel } from './ink/screens/email.tsx'
 import type { AccountsInitialPanel } from './ink/screens/accounts.tsx'
 
 // ---------------------------------------------------------------------------
@@ -210,7 +209,7 @@ const mailCmd = program.command('mail [domain]').description('Manage mail accoun
 mailCmd.action((domain: string | undefined) =>
   dispatch(
     async () => requireHumanMode('list, create, delete, passwd'),
-    () => ({ initialScreen: 'mail' as ScreenName, initialDomain: domain, initialAccount: opts(mailCmd).account }),
+    () => ({ initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: opts(mailCmd).account }),
   )(),
 )
 
@@ -222,7 +221,7 @@ mailCmd
   .action((domain: string | undefined, _o: unknown, command: Command) =>
     dispatch(
       () => agent.mailList(output, domain, opts(command)),
-      () => ({ initialScreen: 'mail' as ScreenName, initialDomain: domain, initialAccount: opts(command).account, initialFilter: opts(command).search }),
+      () => ({ initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: opts(command).account, initialFilter: opts(command).search }),
     )(),
   )
 
@@ -240,8 +239,8 @@ mailCmd
       () => agent.mailCreate(output, domain, opts(command)),
       () => {
         const o = opts(command)
-        const initialMailPanel: MailInitialPanel = { kind: 'add', values: defined({ accountName: o.accountName, size: o.size, description: o.description }) }
-        return { initialScreen: 'mail' as ScreenName, initialDomain: domain, initialAccount: o.account, initialMailPanel }
+        const initialEmailPanel: EmailInitialPanel = { kind: 'addAccount', values: defined({ accountName: o.accountName, size: o.size, description: o.description }) }
+        return { initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: o.account, initialEmailPanel }
       },
     )(),
   )
@@ -257,8 +256,8 @@ mailCmd
       () => agent.mailDelete(output, domain, opts(command)),
       () => {
         const o = opts(command)
-        const initialMailPanel: MailInitialPanel = { kind: 'delete', id: o.accountName }
-        return { initialScreen: 'mail' as ScreenName, initialDomain: domain, initialAccount: o.account, initialMailPanel }
+        const initialEmailPanel: EmailInitialPanel = { kind: 'deleteAccount', id: o.accountName }
+        return { initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: o.account, initialEmailPanel }
       },
     )(),
   )
@@ -275,8 +274,8 @@ mailCmd
       () => agent.mailPasswd(output, domain, opts(command)),
       () => {
         const o = opts(command)
-        const initialMailPanel: MailInitialPanel = { kind: 'edit', id: o.accountName }
-        return { initialScreen: 'mail' as ScreenName, initialDomain: domain, initialAccount: o.account, initialMailPanel }
+        const initialEmailPanel: EmailInitialPanel = { kind: 'editAccount', id: o.accountName }
+        return { initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: o.account, initialEmailPanel }
       },
     )(),
   )
@@ -293,7 +292,7 @@ const mailRedirectCmd = program.command('mail-redirect [domain]').description('M
 mailRedirectCmd.action((domain: string | undefined) =>
   dispatch(
     async () => requireHumanMode('list, add, remove'),
-    () => ({ initialScreen: 'mailRedirect' as ScreenName, initialDomain: domain, initialAccount: opts(mailRedirectCmd).account }),
+    () => ({ initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: opts(mailRedirectCmd).account }),
   )(),
 )
 
@@ -306,7 +305,7 @@ mailRedirectCmd
   .action((domain: string | undefined, _o: unknown, command: Command) =>
     dispatch(
       () => agent.mailRedirectList(output, domain, opts(command)),
-      () => ({ initialScreen: 'mailRedirect' as ScreenName, initialDomain: domain, initialAccount: opts(command).account, initialFilter: opts(command).search }),
+      () => ({ initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: opts(command).account, initialFilter: opts(command).search }),
     )(),
   )
 
@@ -322,8 +321,8 @@ mailRedirectCmd
       () => agent.mailRedirectAdd(output, domain, opts(command)),
       () => {
         const o = opts(command)
-        const initialMailRedirectPanel: MailRedirectInitialPanel = { kind: 'add', values: defined({ from: o.from, to: o.to }) }
-        return { initialScreen: 'mailRedirect' as ScreenName, initialDomain: domain, initialAccount: o.account, initialMailRedirectPanel }
+        const initialEmailPanel: EmailInitialPanel = { kind: 'addRedirection', values: defined({ from: o.from, to: o.to }) }
+        return { initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: o.account, initialEmailPanel }
       },
     )(),
   )
@@ -339,8 +338,8 @@ mailRedirectCmd
       () => agent.mailRedirectRemove(output, domain, opts(command)),
       () => {
         const o = opts(command)
-        const initialMailRedirectPanel: MailRedirectInitialPanel = { kind: 'delete', id: o.id }
-        return { initialScreen: 'mailRedirect' as ScreenName, initialDomain: domain, initialAccount: o.account, initialMailRedirectPanel }
+        const initialEmailPanel: EmailInitialPanel = { kind: 'deleteRedirection', id: o.id }
+        return { initialScreen: 'email' as ScreenName, initialDomain: domain, initialAccount: o.account, initialEmailPanel }
       },
     )(),
   )
@@ -466,7 +465,7 @@ authCmd
 // (ADR-0007, extended to survive across service switches).
 // ---------------------------------------------------------------------------
 
-const DOMAIN_FIRST_SERVICES: Record<string, ScreenName> = { dns: 'dns', mail: 'mail', 'mail-redirect': 'mailRedirect', accounts: 'accounts' }
+const DOMAIN_FIRST_SERVICES: Record<string, ScreenName> = { dns: 'dns', mail: 'email', 'mail-redirect': 'email', accounts: 'accounts' }
 
 program.argument('[domain]', 'Pin this domain for the session and open the home menu, instead of asking for it in every service')
 program.argument('[service]', 'Optional: jump straight to this service (dns, mail, mail-redirect, accounts) instead of the home menu')

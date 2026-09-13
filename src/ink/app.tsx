@@ -2,12 +2,11 @@ import React, { Component, useState, type ErrorInfo, type ReactNode } from 'reac
 import { Box, Text } from 'ink'
 import { HomeScreen } from './screens/home.tsx'
 import { DnsScreen, type DnsInitialPanel } from './screens/dns.tsx'
-import { MailScreen, type MailInitialPanel } from './screens/mail.tsx'
-import { MailRedirectScreen, type MailRedirectInitialPanel } from './screens/mailRedirect.tsx'
+import { EmailScreen, type EmailInitialPanel } from './screens/email.tsx'
 import { AccountsScreen, type AccountsInitialPanel } from './screens/accounts.tsx'
 import { ThemeProvider } from './theme.ts'
 
-export type ScreenName = 'home' | 'dns' | 'mail' | 'mailRedirect' | 'accounts'
+export type ScreenName = 'home' | 'dns' | 'email' | 'accounts'
 
 export type AppProps = {
   initialScreen: ScreenName
@@ -15,8 +14,7 @@ export type AppProps = {
   initialDomain?: string
   initialFilter?: string
   initialDnsPanel?: DnsInitialPanel
-  initialMailPanel?: MailInitialPanel
-  initialMailRedirectPanel?: MailRedirectInitialPanel
+  initialEmailPanel?: EmailInitialPanel
   initialAccountsPanel?: AccountsInitialPanel
   /**
    * Domain pinned for the whole session (`ovhtool <domain>`, domain-first —
@@ -82,26 +80,13 @@ export function App(props: AppProps) {
           />
         </ThemeProvider>
       )
-    case 'mail':
+    case 'email':
       return (
-        <ThemeProvider service="mail">
-          <MailScreen
+        <ThemeProvider service="email">
+          <EmailScreen
             initialDomain={initialArgs.initialDomain ?? pinnedDomain}
             initialAccount={initialArgs.initialAccount ?? pinnedAccount}
-            initialPanel={initialArgs.initialMailPanel}
-            initialFilter={initialArgs.initialFilter}
-            pinnedDomain={pinnedDomain}
-            onHome={goHome}
-          />
-        </ThemeProvider>
-      )
-    case 'mailRedirect':
-      return (
-        <ThemeProvider service="mailRedirect">
-          <MailRedirectScreen
-            initialDomain={initialArgs.initialDomain ?? pinnedDomain}
-            initialAccount={initialArgs.initialAccount ?? pinnedAccount}
-            initialPanel={initialArgs.initialMailRedirectPanel}
+            initialPanel={initialArgs.initialEmailPanel}
             initialFilter={initialArgs.initialFilter}
             pinnedDomain={pinnedDomain}
             onHome={goHome}

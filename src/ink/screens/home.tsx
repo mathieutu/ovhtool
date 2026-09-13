@@ -18,8 +18,7 @@ export type HomeScreenProps = {
 
 const DOMAINS: { screen: ScreenName; label: string }[] = [
   { screen: 'dns', label: 'Domains' },
-  { screen: 'mail', label: 'Mail Accounts' },
-  { screen: 'mailRedirect', label: 'Mail Redirections' },
+  { screen: 'email', label: 'Mail' },
 ]
 
 /** Home screen (ADR-0005): a menu of the domains, selecting one opens its dashboard. */
