@@ -66,3 +66,55 @@ export async function applyRemoveMailRedirection(client: OvhClient, domain: stri
     return !ids.includes(id)
   })
 }
+
+/** All redirections sharing one `from` address — OVH itself has no such grouping (one id per from/to pair), but the UI treats them as a single "who does this address forward to" entry. */
+export type RedirectionGroup = {
+  from: string
+  redirections: MailRedirection[]
+}
+
+export function groupRedirectionsByFrom(redirections: MailRedirection[]): RedirectionGroup[] {
+  const byFrom = new Map<string, MailRedirection[]>()
+  for (const redirection of redirections) {
+    const group = byFrom.get(redirection.from)
+    if (group) group.push(redirection)
+    else byFrom.set(redirection.from, [redirection])
+  }
+  return [...byFrom.entries()].map(([from, group]) => ({ from, redirections: group }))
+}
+
+/**
+ * OVH has no endpoint to change a redirection's `to` in place — editing a
+ * group of redirections that share a `from` means deleting the ones whose
+ * destination is no longer wanted and creating the newly added ones.
+ * Existing destinations left untouched in `desiredTos` are neither deleted
+ * nor recreated.
+ */
+export function planRedirectionRecipients(existing: MailRedirection[], desiredTos: string[]): { toDelete: MailRedirection[]; toCreate: string[] } {
+  const desired = new Set(desiredTos)
+  const current = new Set(existing.map((r) => r.to))
+  return {
+    toDelete: existing.filter((r) => !desired.has(r.to)),
+    toCreate: desiredTos.filter((to) => !current.has(to)),
+  }
+}
+
+export type RedirectionChangeParams = {
+  domain: string
+  from: string
+  toDelete: MailRedirection[]
+  toCreate: string[]
+}
+
+export function prepareRedirectionChanges({ from, toDelete, toCreate }: RedirectionChangeParams): ActionDiff[] {
+  return [...toDelete.map((r) => diffDelete({ from: r.from, to: r.to })), ...toCreate.map((to) => diffCreate({ from, to }))]
+}
+
+export async function applyRedirectionChanges(client: OvhClient, { domain, from, toDelete, toCreate }: RedirectionChangeParams): Promise<void> {
+  for (const redirection of toDelete) {
+    await applyRemoveMailRedirection(client, domain, redirection.id)
+  }
+  for (const to of toCreate) {
+    await applyAddMailRedirection(client, { domain, from, to })
+  }
+}

@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { assertValidRecordType, isValidRecordType, prepareUpdateDnsRecord, prepareDeleteDnsRecord, type DnsRecord } from '../src/commands/dns.ts'
 import { preparePasswdMailAccount } from '../src/commands/mail.ts'
+import { groupRedirectionsByFrom, planRedirectionRecipients, prepareRedirectionChanges, type MailRedirection } from '../src/commands/mailRedirect.ts'
 import { listAccounts, setDefaultAccount, removeAccount, forgetDomain } from '../src/commands/accounts.ts'
 import { explainConflict } from '../src/commands/pollUntil.ts'
 import { ValidationError, ApiError } from '../src/errors.ts'
@@ -110,6 +111,59 @@ test('explainConflict rewords a 409 "already being processed" conflict into an a
       return true
     },
   )
+})
+
+function redirection(id: string, from: string, to: string): MailRedirection {
+  return { id, domain: 'example.com', from, to, localCopy: false }
+}
+
+test('groupRedirectionsByFrom groups multiple destinations of the same address under one entry', () => {
+  const groups = groupRedirectionsByFrom([
+    redirection('1', 'contact@example.com', 'a@gmail.com'),
+    redirection('2', 'sales@example.com', 'b@gmail.com'),
+    redirection('3', 'contact@example.com', 'c@gmail.com'),
+  ])
+  assert.deepEqual(
+    groups.map((g) => [g.from, g.redirections.map((r) => r.id)]),
+    [
+      ['contact@example.com', ['1', '3']],
+      ['sales@example.com', ['2']],
+    ],
+  )
+})
+
+test('groupRedirectionsByFrom returns an empty list for no redirections', () => {
+  assert.deepEqual(groupRedirectionsByFrom([]), [])
+})
+
+test('planRedirectionRecipients only deletes destinations dropped from the desired list and only creates new ones', () => {
+  const existing = [redirection('1', 'contact@example.com', 'a@gmail.com'), redirection('2', 'contact@example.com', 'b@gmail.com')]
+  const { toDelete, toCreate } = planRedirectionRecipients(existing, ['a@gmail.com', 'c@gmail.com'])
+  assert.deepEqual(
+    toDelete.map((r) => r.id),
+    ['2'],
+  )
+  assert.deepEqual(toCreate, ['c@gmail.com'])
+})
+
+test('planRedirectionRecipients is a no-op when the desired list matches the existing one', () => {
+  const existing = [redirection('1', 'contact@example.com', 'a@gmail.com')]
+  const { toDelete, toCreate } = planRedirectionRecipients(existing, ['a@gmail.com'])
+  assert.deepEqual(toDelete, [])
+  assert.deepEqual(toCreate, [])
+})
+
+test('prepareRedirectionChanges renders deletes before creates', () => {
+  const toDelete = [redirection('1', 'contact@example.com', 'old@gmail.com')]
+  const diffs = prepareRedirectionChanges({ domain: 'example.com', from: 'contact@example.com', toDelete, toCreate: ['new@gmail.com'] })
+  assert.deepEqual(
+    diffs.map((d) => d.action),
+    ['delete', 'create'],
+  )
+  assert.deepEqual(diffs[1]!.changes, [
+    { field: 'from', before: undefined, after: 'contact@example.com' },
+    { field: 'to', before: undefined, after: 'new@gmail.com' },
+  ])
 })
 
 test('explainConflict never rewords or retries a non-409 error', async () => {
