@@ -1,5 +1,13 @@
 # Changelog
 
+<a name="0.6.0"></a>
+## 0.6.0 (2026-09-18)
+
+### Added
+
+- ✨ Support multi-destination mail redirections and editing them [[86987e8](https://github.com/mathieutu/ovhtool/commit/86987e88f202dd99b29b09d3cc4f4a273392c907)]
+
+
 <a name="0.5.0"></a>
 ## 0.5.0 (2026-09-13)
 
